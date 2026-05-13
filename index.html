@@ -1,0 +1,3932 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>실시간 수업 요약 앱</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --surface-2: #f9fafb;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #d1d5db;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body.theme-dark {
+      --bg: #111827;
+      --surface: #1f2937;
+      --surface-2: #111827;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --border: #374151;
+    }
+
+    body.theme-dark .topbar,
+    body.theme-dark .panel,
+    body.theme-dark .sidebar,
+    body.theme-dark .modal-content,
+    body.theme-dark .answer-box,
+    body.theme-dark .title-input,
+    body.theme-dark input,
+    body.theme-dark textarea,
+    body.theme-dark select,
+    body.theme-dark button {
+      background-color: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    body.theme-dark .panel-content,
+    body.theme-dark .question-input,
+    body.theme-dark .answer-box {
+      background-color: var(--surface-2);
+    }
+
+    body.theme-dark .placeholder,
+    body.theme-dark .status {
+      color: var(--muted);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #f5f6f8;
+      color: #222;
+    }
+
+
+    .session-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 50;
+      width: 340px;
+      max-width: calc(100vw - 48px);
+      height: 100vh;
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
+      transform: translateX(-105%);
+      transition: transform 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .session-sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(15, 23, 42, 0.25);
+      display: none;
+    }
+
+    .sidebar-backdrop.open {
+      display: block;
+    }
+
+    .sidebar-header {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 16px;
+      border-bottom: 1px solid #eef0f2;
+    }
+
+    .sidebar-title {
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .sidebar-content {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+      overflow-y: auto;
+    }
+
+    .sidebar-content input,
+    .sidebar-content select,
+    .sidebar-content button {
+      width: 100%;
+      min-height: 45px;
+      height: 45px;
+      padding: 0 16px;
+      border-radius: 14px;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .sidebar-content button {
+      font-weight: 400;
+      font-size: 17px;
+    }
+
+    .sidebar-content select {
+      cursor: pointer;
+    }
+
+    .field-label {
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: 400;
+      color: #4b5563;
+    }
+
+    .sidebar-help {
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--bg);
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .sidebar-divider {
+      width: 100%;
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 10px 0;
+    }
+
+    .sidebar-title-small {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 4px;
+    }
+
+
+    .export-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.35);
+    }
+
+    .export-modal-backdrop.open {
+      display: flex;
+    }
+
+    .export-modal {
+      width: min(520px, 100%);
+      max-height: min(720px, 90vh);
+      overflow-y: auto;
+      background: #ffffff;
+      border-radius: 18px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+    }
+
+    .export-modal-header,
+    .export-modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid #eef0f2;
+    }
+
+    .export-modal-footer {
+      border-top: 1px solid #eef0f2;
+      border-bottom: none;
+      justify-content: flex-end;
+    }
+
+    .export-modal-title {
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .export-modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .export-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fafafa;
+    }
+
+    .export-options label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+    }
+
+    .export-options input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+    }
+
+
+    .toast-container {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      max-width: min(420px, calc(100vw - 36px));
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: rgba(17, 24, 39, 0.92);
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1.45;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.error {
+      background: rgba(185, 28, 28, 0.94);
+    }
+
+    .toast.success {
+      background: rgba(22, 101, 52, 0.94);
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 70px minmax(120px, 1fr) 8px 220px;
+      gap: 8px 12px;
+      padding: 12px;
+    }
+
+    .topbar {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 16px;
+      background: #ffffff;
+      border: 1px solid #e1e4e8;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .topbar-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      width: auto;
+      padding-right: 0;
+    }
+
+    .title-wrap {
+      min-width: 210px;
+    }
+
+    .hamburger-button {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0;
+    }
+
+    .hamburger-button span {
+      width: 22px;
+      height: 3px;
+      border-radius: 999px;
+      background: #374151;
+      display: block;
+    }
+
+    .status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .title-input {
+      width: 220px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: var(--bg);
+      font-size: 18px;
+      font-weight: 700;
+      color: #222;
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .title-input::placeholder {
+      color: #9ca3af;
+    }
+
+    .title-input:hover {
+      background: #ffffff;
+      border-color: #9ca3af;
+    }
+
+    .title-input:focus {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+
+    .title-wrap {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-width: 210px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .title-input {
+      width: 220px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: var(--bg);
+      font-size: 18px;
+      font-weight: 700;
+      color: #222;
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .title-input::placeholder {
+      color: #9ca3af;
+    }
+
+    .title-input:hover {
+      background: #ffffff;
+      border-color: #9ca3af;
+    }
+
+    .title-input:focus {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .status {
+      max-width: 320px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      color: #6b7280;
+      pointer-events: none;
+      margin-left: 48px;
+    }
+
+    .status.recording {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .controls {
+      flex: 1 1 auto;
+      margin-left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button,
+    select,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button,
+    select,
+    input {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #222;
+    }
+
+    input[type="number"] {
+      width: 118px;
+    }
+
+    input[type="password"] {
+      width: 190px;
+    }
+
+    input[type="text"] {
+      width: 160px;
+    }
+
+    input[type="search"] {
+      width: 220px;
+    }
+
+
+    .search-nav {
+      display: flex;
+      gap: 6px;
+    }
+
+    .search-nav button {
+      width: auto;
+      padding: 0 10px;
+    }
+
+    .search-active {
+      outline: 3px solid rgba(37, 99, 235, 0.35);
+      outline-offset: 2px;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-results {
+      position: absolute;
+      top: 42px;
+      right: 0;
+      z-index: 30;
+      width: min(460px, 80vw);
+      max-height: 320px;
+      overflow-y: auto;
+      display: none;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .search-results.open {
+      display: block;
+    }
+
+    .search-result-item {
+      padding: 9px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+      white-space: normal;
+    }
+
+    .search-result-item:hover {
+      background: var(--bg);
+    }
+
+    .search-result-type {
+      margin-bottom: 3px;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    mark.search-highlight {
+      padding: 0 2px;
+      border-radius: 3px;
+      background: #fef08a;
+      color: inherit;
+    }
+
+
+    body.theme-dark .search-results {
+      background: #111827;
+      color: #f9fafb;
+      border-color: #374151;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    body.theme-dark .search-result-item:hover {
+      background: #1f2937;
+    }
+
+    body.theme-dark .search-result-type {
+      color: #9ca3af;
+    }
+
+    body.theme-dark mark.search-highlight {
+      background: rgba(45, 212, 191, 0.28);
+      color: #99f6e4;
+      border: 1px solid rgba(45, 212, 191, 0.45);
+    }
+
+    body.theme-dark .search-active {
+      outline-color: rgba(45, 212, 191, 0.6);
+    }
+
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    button.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+
+    button.danger {
+      background: #ffffff;
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    .main-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .panel {
+      position: relative;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      border: 1px solid #e1e4e8;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid #eef0f2;
+      background: #fbfbfc;
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .panel-meta {
+      font-size: 12px;
+      color: #6b7280;
+      text-align: right;
+    }
+
+    .panel-content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    .placeholder {
+      color: #9ca3af;
+    }
+
+    .transcript-block {
+      margin: 0 0 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid #eef0f2;
+    }
+
+    .transcript-block.summarized {
+      background: var(--bg);
+      color: #6b7280;
+      border-color: #e5e7eb;
+    }
+
+    .block-time {
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+    }
+
+    .interim-text {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #eff6ff;
+      border: 1px dashed #93c5fd;
+      color: #1d4ed8;
+    }
+
+    .summary-card {
+      margin: 0 0 12px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #ffffff;
+    }
+
+    .summary-card-title {
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .summary-card-body {
+      white-space: pre-wrap;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .small-button {
+      height: 28px;
+      padding: 0 9px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .small-button.danger {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: #fff;
+    }
+
+    .qa-panel {
+      min-height: 160px;
+      height: auto;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 12px;
+      background: #ffffff;
+      border: 1px solid #e1e4e8;
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .qa-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .qa-controls textarea {
+      flex: 1;
+      min-height: 80px;
+      resize: none;
+      padding: 10px;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      line-height: 1.5;
+    }
+
+    .answer-box-wrap {
+      position: relative;
+      min-height: 0;
+      display: flex;
+    }
+
+    .answer-box {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px;
+      border: 1px solid #eef0f2;
+      border-radius: 12px;
+      background: #fafafa;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+
+
+    .theme-setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+    }
+
+    .theme-setting-help {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.35;
+    }
+
+    .theme-toggle-button {
+      width: 48px !important;
+      height: 48px !important;
+      min-height: 48px !important;
+      flex: 0 0 48px;
+      padding: 0 !important;
+      border-radius: 14px;
+      font-size: 22px !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    body.theme-dark {
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    body.theme-dark .app,
+    body.theme-dark .main-grid {
+      background: #111827;
+    }
+
+    body.theme-dark .topbar,
+    body.theme-dark .panel,
+    body.theme-dark .qa-panel,
+    body.theme-dark .session-sidebar,
+    body.theme-dark .export-modal {
+      background: #1f2937;
+      color: #f9fafb;
+      border-color: #374151;
+    }
+
+    body.theme-dark .panel-header,
+    body.theme-dark .sidebar-header {
+      background: #111827;
+      border-color: #374151;
+    }
+
+    body.theme-dark .panel-content,
+    body.theme-dark .answer-box,
+    body.theme-dark .summary-card,
+    body.theme-dark .transcript-block,
+    body.theme-dark .sidebar-help,
+    body.theme-dark .export-options {
+      background: #111827;
+      color: #f9fafb;
+      border-color: #374151;
+    }
+
+    body.theme-dark .transcript-block.summarized {
+      background: #1f2937;
+      color: #d1d5db;
+      border-color: #374151;
+    }
+
+    body.theme-dark input,
+    body.theme-dark select,
+    body.theme-dark textarea,
+    body.theme-dark button {
+      background: #111827;
+      color: #f9fafb;
+      border-color: #4b5563;
+    }
+
+    body.theme-dark button.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+
+    body.theme-dark button.danger,
+    body.theme-dark .small-button.danger {
+      color: #fca5a5;
+      border-color: #ef4444;
+    }
+
+    body.theme-dark .placeholder,
+    body.theme-dark .panel-meta,
+    body.theme-dark .block-time,
+    body.theme-dark .field-label,
+    body.theme-dark .theme-setting-help,
+    body.theme-dark .summary-card-title {
+      color: #d1d5db;
+    }
+
+    body.theme-dark .title-input {
+      background: #111827;
+      color: #f9fafb;
+      border-color: #4b5563;
+    }
+
+    body.theme-dark .hamburger-button span {
+      background: #f9fafb;
+    }
+
+    .mobile-panel-switcher {
+      display: none;
+    }
+
+    .mobile-topbar-toggle {
+      display: none;
+    }
+
+
+    .scroll-bottom-button {
+      position: absolute;
+      right: 18px;
+      bottom: 16px;
+      z-index: 20;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(31, 41, 55, 0.72);
+      color: #ffffff;
+      font-size: 22px;
+      line-height: 1;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    }
+
+    .scroll-bottom-button.visible {
+      display: flex;
+    }
+
+    .resize-handle {
+      height: 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      cursor: row-resize;
+      transition: background 0.15s ease;
+    }
+
+    .resize-handle:hover,
+    .resize-handle.dragging {
+      background: #cbd5e1;
+    }
+
+
+    @media (max-width: 1200px) {
+      .app {
+        height: 100vh;
+        min-height: 0;
+        grid-template-rows: auto minmax(0, 1fr) 8px 220px;
+      }
+
+      .topbar {
+        min-height: 64px;
+        height: auto;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 12px 14px;
+      }
+
+      .title-wrap {
+        width: 100%;
+      }
+
+      .title-input {
+        width: min(420px, 100%);
+      }
+
+      .controls {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+      }
+
+      .main-grid {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .panel {
+        min-height: 0;
+      }
+
+      .qa-panel {
+        min-height: 0;
+      }
+    }
+
+
+    @media (max-width: 1450px) and (min-width: 761px) {
+      .topbar {
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
+        align-items: stretch;
+        flex-direction: column;
+        padding: 10px;
+        position: relative;
+      }
+
+      .topbar-left {
+        width: 100%;
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding-right: 72px;
+      }
+
+      .title-wrap {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .title-input {
+        width: 100%;
+      }
+
+      .status {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .mobile-topbar-toggle {
+        display: block;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      .controls {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+        gap: 6px;
+        display: none;
+        padding-top: 8px;
+      }
+
+      .topbar.mobile-expanded .controls {
+        display: flex;
+      }
+    }
+
+
+    @media (max-width: 1450px) and (min-width: 761px) {
+      .app {
+        grid-template-rows: auto minmax(120px, 1fr) 8px 220px;
+      }
+    }
+
+    @media (max-width: 760px),
+    (orientation: portrait) {
+      body {
+        overflow: hidden;
+      }
+
+      .toast-container {
+        right: 10px;
+        bottom: 10px;
+      }
+
+      .app {
+        height: 100vh;
+        min-height: 0;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 8px;
+        padding: 8px;
+        overflow: hidden;
+      }
+
+      .topbar {
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
+        align-items: stretch;
+        flex-direction: column;
+        padding: 10px;
+        position: relative;
+      }
+
+
+      .topbar-left {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        flex: 0 0 auto;
+        min-width: 0;
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding-right: 72px;
+      }
+
+      .title-wrap {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .title-input {
+        width: 100%;
+        height: 32px;
+        font-size: 16px;
+      }
+
+      .hamburger-button {
+        display: inline-flex;
+        width: 36px;
+        height: 36px;
+      }
+
+      .status {
+        position: static;
+        max-width: 100%;
+        margin-top: 3px;
+        font-size: 11px;
+      }
+
+      .mobile-topbar-toggle {
+        display: block;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      .controls {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+        gap: 6px;
+        display: none;
+        padding-top: 8px;
+      }
+
+      .topbar.mobile-expanded .controls {
+        display: flex;
+      }
+
+      .controls>button,
+      .controls>select {
+        height: 34px;
+        padding: 0 10px;
+      }
+
+      .search-wrap {
+        flex: 1 1 160px;
+        min-width: 0;
+      }
+
+      .search-wrap input[type="search"] {
+        width: 100%;
+      }
+
+      .search-nav {
+        display: flex;
+        gap: 6px;
+      }
+
+      .search-nav button {
+        flex: 1;
+      }
+
+      .mobile-panel-switcher {
+        display: block;
+        min-height: 0;
+      }
+
+      .mobile-panel-switcher select {
+        width: 100%;
+        height: 40px;
+        border-radius: 12px;
+        font-size: 15px;
+      }
+
+      .main-grid {
+        min-height: 0;
+        height: 100%;
+        overflow: hidden;
+        display: block;
+      }
+
+      .main-grid .panel {
+        min-height: 0;
+        height: 100%;
+        display: none;
+      }
+
+      .main-grid .panel.mobile-active-panel {
+        display: flex;
+      }
+
+      .panel-content {
+        min-height: 0;
+        overflow-y: auto;
+        font-size: 15px;
+      }
+
+      .resize-handle {
+        display: none;
+      }
+
+      .qa-panel {
+        min-height: 0;
+        height: 100%;
+        display: none;
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 10px;
+      }
+
+      .qa-panel.mobile-active-panel {
+        display: grid;
+      }
+
+      .qa-panel.mobile-active-panel .answer-box {
+        order: 1;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+      }
+
+      .qa-panel.mobile-active-panel .qa-controls {
+        order: 2;
+        flex: 0 0 auto;
+      }
+
+      .qa-controls {
+        min-height: 0;
+      }
+
+      .qa-controls textarea {
+        min-height: 64px;
+        max-height: 96px;
+      }
+
+      .answer-box {
+        min-height: 0;
+      }
+
+      .search-results {
+        left: 0;
+        right: auto;
+        width: min(100%, 92vw);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <aside class="session-sidebar" id="sessionSidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">수업 관리</div>
+      <button id="sidebarCloseButton">닫기</button>
+    </div>
+
+    <div class="sidebar-content">
+      <label class="field-label" for="sessionTitleInput">수업 제목</label>
+      <input id="sessionTitleInput" type="text" placeholder="예: 음운론 5주차" title="수업 제목" />
+
+      <button id="saveSessionButton">현재 수업 저장</button>
+
+      <label class="field-label" for="sessionSelect">저장된 수업</label>
+      <select id="sessionSelect" aria-label="저장된 수업 선택">
+        <option value="">저장된 수업</option>
+      </select>
+
+      <button id="loadSessionButton">선택한 수업 불러오기</button>
+      <button id="deleteSessionButton">선택한 수업 삭제</button>
+      <button id="newSessionButton">새 수업 시작</button>
+
+      <div class="theme-setting-row">
+        <div>
+          <div class="field-label">색상 테마</div>
+          <div class="theme-setting-help">버튼을 눌러 라이트/다크 모드를 전환합니다.</div>
+        </div>
+        <button id="themeToggleButton" class="theme-toggle-button" title="테마 전환" aria-label="테마 전환">☀️</button>
+      </div>
+
+      <label class="field-label" for="apiKeyInput">Gemini API 키</label>
+      <input id="apiKeyInput" type="password" placeholder="AIza..." />
+      <button id="saveApiKeyButton">API 키 저장</button>
+
+      <label class="field-label" for="chunkLimitInput">부분 요약 기준 글자 수</label>
+      <input id="chunkLimitInput" type="number" min="300" step="100" value="1500" />
+
+      <div class="sidebar-help">
+        현재 수업 내용은 자동 저장됩니다. 과목별로 보관하려면 “현재 수업 저장”을 눌러 목록에 추가하세요.
+      </div>
+
+      <hr class="sidebar-divider" />
+
+      <div class="sidebar-title-small">요약 설정</div>
+      <label class="field-label" for="chunkRatioInput">부분 요약 비율</label>
+      <select id="chunkRatioInput">
+        <option value="8">원문 약 1/8</option>
+        <option value="10" selected>원문 약 1/10</option>
+        <option value="12">원문 약 1/12</option>
+        <option value="15">원문 약 1/15</option>
+      </select>
+
+      <label class="field-label" for="globalRatioInput">전체 요약 비율</label>
+      <select id="globalRatioInput">
+        <option value="4">전체 전문 약 1/4</option>
+        <option value="5" selected>전체 전문 약 1/5</option>
+        <option value="6">전체 전문 약 1/6</option>
+        <option value="8">전체 전문 약 1/8</option>
+      </select>
+
+      <label class="field-label" for="globalIntervalInput">전체 요약 자동 갱신 주기</label>
+      <select id="globalIntervalInput">
+        <option value="0">수동 (자동 갱신 없음)</option>
+        <option value="5">5분마다</option>
+        <option value="10" selected>10분마다</option>
+        <option value="15">15분마다</option>
+        <option value="20">20분마다</option>
+      </select>
+
+      <label class="field-label" for="globalFormatInput">전체 요약 형식</label>
+      <select id="globalFormatInput">
+        <option value="numbered" selected>번호형 주제 요약</option>
+        <option value="paragraph">문단형 요약</option>
+      </select>
+
+      <label class="field-label" for="pipSourceSelect">PiP 표시 내용</label>
+      <select id="pipSourceSelect">
+        <option value="transcript" selected>실시간 전문</option>
+        <option value="chunk">부분 요약</option>
+        <option value="global">전체 요약</option>
+        <option value="qa">질문하기</option>
+      </select>
+      <button id="openPipButton">PiP 열기</button>
+      <button id="closePipButton">PiP 닫기</button>
+
+      <div class="sidebar-help">
+        설정은 자동 저장됩니다. 다음 요약 생성부터 적용됩니다. PiP는 일부 Chromium 기반 브라우저에서만 지원됩니다.
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <div class="export-modal-backdrop" id="exportModalBackdrop">
+    <div class="export-modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+      <div class="export-modal-header">
+        <div id="exportModalTitle" class="export-modal-title">내보내기 옵션</div>
+        <button id="closeExportModalButton">닫기</button>
+      </div>
+
+      <div class="export-modal-body">
+        <label class="field-label" for="exportFormatSelect">파일 형식</label>
+        <select id="exportFormatSelect">
+          <option value="md" selected>Markdown (.md)</option>
+          <option value="txt">TXT (.txt)</option>
+          <option value="pdf">PDF (인쇄/저장)</option>
+          <option value="docx">Word (.docx)</option>
+        </select>
+
+        <div class="export-options">
+          <label><input type="checkbox" id="exportGlobalSummary" checked /> 전체 요약 포함</label>
+          <label><input type="checkbox" id="exportChunkSummaries" checked /> 부분 요약 포함</label>
+          <label><input type="checkbox" id="exportQaHistory" checked /> 질문/답변 포함</label>
+          <label><input type="checkbox" id="exportTranscript" checked /> 전체 전문 포함</label>
+        </div>
+
+        <div class="sidebar-help">
+          시험 대비용이면 전체 전문을 제외하고 요약과 질문 기록만 저장해도 좋습니다.
+        </div>
+      </div>
+
+      <div class="export-modal-footer">
+        <button id="cancelExportButton">취소</button>
+        <button class="primary" id="confirmExportButton">내보내기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="title-row">
+          <button id="sidebarToggleButton" class="hamburger-button" title="수업 관리"
+            aria-label="수업 관리"><span></span><span></span><span></span></button>
+          <div class="title-wrap">
+            <input id="headerSessionTitleInput" class="title-input" type="text" placeholder="수업 제목" title="수업 제목" />
+          </div>
+        </div>
+        <div class="status" id="statusText">대기 중</div>
+      </div>
+
+      <button id="mobileTopbarToggleButton" class="mobile-topbar-toggle">메뉴</button>
+
+      <div class="controls">
+        <button class="primary" id="startButton">시작</button>
+        <button class="danger" id="stopButton" disabled>중지</button>
+        <button id="markButton">수동 마킹</button>
+        <button id="exportButton">내보내기</button>
+        <button id="clearButton">초기화</button>
+
+        <select id="languageSelect" aria-label="음성 인식 언어 선택">
+          <option value="ko-KR" selected>한국어</option>
+          <option value="en-US">English (US)</option>
+          <option value="ja-JP">日本語</option>
+        </select>
+        <select id="modelSelect" aria-label="모델 선택">
+          <option value="gemini-3.1-flash-lite" selected>Gemini 3.1 Flash-Lite</option>
+          <option value="local">로컬 모델</option>
+        </select>
+        <div class="search-wrap">
+          <input id="searchInput" type="search" placeholder="검색..." title="전문·요약·질문 검색" />
+          <div id="searchResults" class="search-results"></div>
+        </div>
+        <div class="search-nav">
+          <button id="searchPrevButton" title="이전 검색 결과">이전</button>
+          <button id="searchNextButton" title="다음 검색 결과">다음</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="mobile-panel-switcher">
+      <select id="mobilePanelSelect" aria-label="세로 화면 표시 패널 선택">
+        <option value="transcript">실시간 전문</option>
+        <option value="chunk">부분 요약</option>
+        <option value="global">전체 요약</option>
+        <option value="qa">질문하기</option>
+      </select>
+    </div>
+
+    <main class="main-grid">
+      <section class="panel transcript-panel-wrap">
+        <div class="panel-header">
+          <div class="panel-title">실시간 전문</div>
+          <div class="panel-meta" id="transcriptMeta">0자 · 0블록</div>
+        </div>
+        <div class="panel-content" id="transcriptPanel">
+          <div class="placeholder" id="transcriptPlaceholder">음성 인식을 시작하면 원문이 이곳에 누적됩니다.</div>
+        </div>
+        <button class="scroll-bottom-button" data-scroll-target="transcriptPanel" title="맨 아래로">↓</button>
+      </section>
+
+      <section class="panel chunk-panel-wrap">
+        <div class="panel-header">
+          <div class="panel-title">부분 요약</div>
+          <div class="panel-meta" id="chunkSummaryMeta">0개</div>
+        </div>
+        <div class="panel-content" id="chunkSummaryPanel">
+          <div class="placeholder" id="chunkSummaryPlaceholder">Gemini API 키를 저장하면, 일정 텍스트 수마다 실제 부분 요약이 생성됩니다.</div>
+        </div>
+        <button class="scroll-bottom-button" data-scroll-target="chunkSummaryPanel" title="맨 아래로">↓</button>
+      </section>
+
+      <section class="panel global-panel-wrap">
+        <div class="panel-header">
+          <div class="panel-title">전체 요약</div>
+          <div class="panel-meta">
+            <button id="refreshGlobalSummaryButton" style="height:28px;padding:0 10px;font-size:12px;">전체 요약하기</button>
+          </div>
+        </div>
+        <div class="panel-content" id="globalSummaryPanel">
+          <div class="placeholder">다음 단계에서 10분마다 전체 전문 요약을 붙입니다.</div>
+        </div>
+        <button class="scroll-bottom-button" data-scroll-target="globalSummaryPanel" title="맨 아래로">↓</button>
+      </section>
+    </main>
+
+    <div class="resize-handle" id="verticalResizeHandle" title="드래그해서 질문 패널 높이 조절"></div>
+
+    <section class="qa-panel">
+      <div class="qa-controls">
+        <select id="questionMode" aria-label="질문 컨텍스트 선택">
+          <option value="hybrid">하이브리드: 부분요약 + 최근 전문</option>
+          <option value="summary">부분요약본 기반</option>
+          <option value="transcript">전체 전문 기반</option>
+        </select>
+        <textarea id="questionInput" placeholder="수업 내용에 대해 질문하기"></textarea>
+        <button class="primary" id="askButton">질문하기</button>
+      </div>
+
+      <div class="answer-box-wrap">
+        <div class="answer-box" id="answerBox">
+          <span class="placeholder">질문 답변이 이곳에 표시됩니다. Ctrl+Enter로도 질문할 수 있습니다.</span>
+        </div>
+        <button class="scroll-bottom-button" data-scroll-target="answerBox" title="맨 아래로">↓</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const STORAGE_KEY = "lecture-summarizer-autosave-v2";
+    const API_KEY_STORAGE_KEY = "lecture-summarizer-gemini-api-key-v1";
+    const UI_SETTINGS_KEY = "lecture-summarizer-ui-settings-v1";
+    const SESSION_INDEX_KEY = "lecture-summarizer-session-index-v1";
+    const SESSION_PREFIX = "lecture-summarizer-session-";
+
+    const state = {
+      recognition: null,
+      isRecording: false,
+      transcriptBlocks: [],
+      chunkSummaries: [],
+      pendingStartIndex: 0,
+      interimText: "",
+      autoRestart: false,
+      lastSavedAt: null,
+      isSummarizingChunk: false,
+      isSummarizingGlobal: false,
+      lastGlobalSummaryAt: null,
+      qaHistory: [],
+      isAnsweringQuestion: false,
+      currentSessionId: null,
+      globalSummaryTimerId: null,
+    };
+
+    const els = {
+      statusText: document.getElementById("statusText"),
+      toastContainer: document.getElementById("toastContainer"),
+      sessionSidebar: document.getElementById("sessionSidebar"),
+      sidebarBackdrop: document.getElementById("sidebarBackdrop"),
+      sidebarToggleButton: document.getElementById("sidebarToggleButton"),
+      sidebarCloseButton: document.getElementById("sidebarCloseButton"),
+      sessionTitleInput: document.getElementById("sessionTitleInput"),
+      headerSessionTitleInput: document.getElementById("headerSessionTitleInput"),
+      saveSessionButton: document.getElementById("saveSessionButton"),
+      sessionSelect: document.getElementById("sessionSelect"),
+      chunkRatioInput: document.getElementById("chunkRatioInput"),
+      globalRatioInput: document.getElementById("globalRatioInput"),
+      globalIntervalInput: document.getElementById("globalIntervalInput"),
+      globalFormatInput: document.getElementById("globalFormatInput"),
+      pipSourceSelect: document.getElementById("pipSourceSelect"),
+      openPipButton: document.getElementById("openPipButton"),
+      closePipButton: document.getElementById("closePipButton"),
+      loadSessionButton: document.getElementById("loadSessionButton"),
+      deleteSessionButton: document.getElementById("deleteSessionButton"),
+      newSessionButton: document.getElementById("newSessionButton"),
+      startButton: document.getElementById("startButton"),
+      stopButton: document.getElementById("stopButton"),
+      markButton: document.getElementById("markButton"),
+      exportButton: document.getElementById("exportButton"),
+      exportModalBackdrop: document.getElementById("exportModalBackdrop"),
+      closeExportModalButton: document.getElementById("closeExportModalButton"),
+      cancelExportButton: document.getElementById("cancelExportButton"),
+      confirmExportButton: document.getElementById("confirmExportButton"),
+      exportFormatSelect: document.getElementById("exportFormatSelect"),
+      exportGlobalSummary: document.getElementById("exportGlobalSummary"),
+      exportChunkSummaries: document.getElementById("exportChunkSummaries"),
+      exportQaHistory: document.getElementById("exportQaHistory"),
+      exportTranscript: document.getElementById("exportTranscript"),
+      searchPrevButton: document.getElementById("searchPrevButton"),
+      searchNextButton: document.getElementById("searchNextButton"),
+      clearButton: document.getElementById("clearButton"),
+      languageSelect: document.getElementById("languageSelect"),
+      apiKeyInput: document.getElementById("apiKeyInput"),
+      saveApiKeyButton: document.getElementById("saveApiKeyButton"),
+      chunkLimitInput: document.getElementById("chunkLimitInput"),
+      modelSelect: document.getElementById("modelSelect"),
+      transcriptPanel: document.getElementById("transcriptPanel"),
+      transcriptPlaceholder: document.getElementById("transcriptPlaceholder"),
+      transcriptMeta: document.getElementById("transcriptMeta"),
+      chunkSummaryPanel: document.getElementById("chunkSummaryPanel"),
+      chunkSummaryPlaceholder: document.getElementById("chunkSummaryPlaceholder"),
+      chunkSummaryMeta: document.getElementById("chunkSummaryMeta"),
+      globalSummaryPanel: document.getElementById("globalSummaryPanel"),
+      refreshGlobalSummaryButton: document.getElementById("refreshGlobalSummaryButton"),
+      askButton: document.getElementById("askButton"),
+      answerBox: document.getElementById("answerBox"),
+      verticalResizeHandle: document.getElementById("verticalResizeHandle"),
+      app: document.querySelector(".app"),
+      themeToggleButton: document.getElementById("themeToggleButton"),
+      mobilePanelSelect: document.getElementById("mobilePanelSelect"),
+      mobileTopbarToggleButton: document.getElementById("mobileTopbarToggleButton"),
+      topbar: document.querySelector(".topbar"),
+    };
+
+    function formatTime(date = new Date()) {
+      return date.toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+    }
+
+    function hasLectureData() {
+      return state.transcriptBlocks.length > 0 || state.chunkSummaries.length > 0;
+    }
+
+    function shouldShowToast(text) {
+      const quietMessages = new Set([
+        "대기 중",
+        "음성 인식 중",
+      ]);
+
+      if (quietMessages.has(text)) return false;
+      if (text.endsWith("선택됨")) return false;
+
+      return true;
+    }
+
+    function getToastType(text) {
+      if (text.includes("실패") || text.includes("오류") || text.includes("차단") || text.includes("없습니다")) {
+        return "error";
+      }
+
+      if (text.includes("완료") || text.includes("저장") || text.includes("복구") || text.includes("내보냈습니다")) {
+        return "success";
+      }
+
+      return "";
+    }
+
+    function showToast(text) {
+      const now = Date.now();
+      if (state.lastToastText === text && now - state.lastToastAt < 1800) return;
+
+      state.lastToastText = text;
+      state.lastToastAt = now;
+
+      const toast = document.createElement("div");
+      toast.className = `toast ${getToastType(text)}`;
+      toast.textContent = text;
+
+      els.toastContainer.appendChild(toast);
+
+      requestAnimationFrame(() => toast.classList.add("show"));
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 220);
+      }, 2600);
+    }
+
+    function setStatus(text, recording = false) {
+      const savedText = state.lastSavedAt
+        ? ` · 자동 저장 ${formatTime(state.lastSavedAt)}`
+        : "";
+
+      els.statusText.textContent = `${text}${savedText}`;
+      els.statusText.classList.toggle("recording", recording);
+
+      if (shouldShowToast(text)) {
+        showToast(text);
+      }
+    }
+
+    function syncSessionTitleFromHeader() {
+      els.sessionTitleInput.value = els.headerSessionTitleInput.value;
+      saveToLocalStorage();
+    }
+
+    function syncSessionTitleFromSidebar() {
+      els.headerSessionTitleInput.value = els.sessionTitleInput.value;
+      saveToLocalStorage();
+    }
+
+    function setSessionTitle(title) {
+      const safeTitle = title || "";
+      els.sessionTitleInput.value = safeTitle;
+      els.headerSessionTitleInput.value = safeTitle;
+    }
+
+    function saveToLocalStorage() {
+      if (!hasLectureData()) return;
+
+      try {
+        const payload = {
+          sessionTitle: els.sessionTitleInput.value.trim(),
+          currentSessionId: state.currentSessionId,
+          transcriptBlocks: state.transcriptBlocks,
+          chunkSummaries: state.chunkSummaries,
+          pendingStartIndex: state.pendingStartIndex,
+          globalSummaryText: els.globalSummaryPanel.textContent,
+          lastGlobalSummaryAt: state.lastGlobalSummaryAt ? state.lastGlobalSummaryAt.toISOString() : null,
+          qaHistory: state.qaHistory,
+          savedAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        state.lastSavedAt = new Date();
+      } catch (error) {
+        setStatus("자동 저장 실패: 브라우저 저장 공간을 확인하세요.", state.isRecording);
+      }
+    }
+
+    function restoreFromLocalStorage() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+
+      try {
+        const saved = JSON.parse(raw);
+        setSessionTitle(saved.sessionTitle || "");
+        state.currentSessionId = saved.currentSessionId || null;
+        state.transcriptBlocks = Array.isArray(saved.transcriptBlocks) ? saved.transcriptBlocks : [];
+        state.chunkSummaries = Array.isArray(saved.chunkSummaries) ? saved.chunkSummaries : [];
+        state.pendingStartIndex = Number.isInteger(saved.pendingStartIndex)
+          ? saved.pendingStartIndex
+          : state.transcriptBlocks.length;
+        state.pendingStartIndex = Math.max(0, Math.min(state.pendingStartIndex, state.transcriptBlocks.length));
+        state.lastSavedAt = saved.savedAt ? new Date(saved.savedAt) : null;
+        state.lastGlobalSummaryAt = saved.lastGlobalSummaryAt ? new Date(saved.lastGlobalSummaryAt) : null;
+        state.qaHistory = Array.isArray(saved.qaHistory) ? saved.qaHistory : [];
+
+        if (saved.globalSummaryText && saved.globalSummaryText.trim()) {
+          els.globalSummaryPanel.textContent = saved.globalSummaryText;
+        }
+
+        renderQaHistory();
+        return hasLectureData();
+      } catch (error) {
+        setStatus("자동 저장 데이터를 불러오지 못했습니다.");
+        return false;
+      }
+    }
+
+    function clearSavedData() {
+      localStorage.removeItem(STORAGE_KEY);
+      state.lastSavedAt = null;
+    }
+
+    function saveApiKey() {
+      const key = els.apiKeyInput.value.trim();
+
+      if (!key) {
+        setStatus("Gemini API 키를 입력하세요.", state.isRecording);
+        return;
+      }
+
+      localStorage.setItem(API_KEY_STORAGE_KEY, key);
+      setStatus("Gemini API 키를 저장했습니다.", state.isRecording);
+    }
+
+    function loadApiKey() {
+      const savedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+      if (savedKey) {
+        els.apiKeyInput.value = savedKey;
+      }
+    }
+
+
+    function normalizeModelSetting(model) {
+      const allowedModels = new Set(["gemini-3.1-flash-lite", "local"]);
+      return allowedModels.has(model) ? model : "gemini-3.1-flash-lite";
+    }
+
+    function saveUiSettings() {
+      const settings = {
+        language: els.languageSelect.value,
+        model: normalizeModelSetting(els.modelSelect.value),
+        chunkLimit: els.chunkLimitInput.value,
+        questionMode: document.getElementById("questionMode").value,
+        chunkRatio: els.chunkRatioInput.value,
+        globalRatio: els.globalRatioInput.value,
+        globalInterval: els.globalIntervalInput.value,
+        globalFormat: els.globalFormatInput.value,
+        pipSource: els.pipSourceSelect.value,
+        mobilePanel: els.mobilePanelSelect.value,
+        qaHeight: getCurrentQaHeight(),
+      };
+      localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+
+    function applyTheme(theme) {
+      const value = theme === "dark" ? "dark" : "light";
+      document.body.classList.toggle("theme-dark", value === "dark");
+
+      if (els.themeToggleButton) {
+        els.themeToggleButton.textContent = value === "dark" ? "🌙" : "☀️";
+        els.themeToggleButton.title = value === "dark" ? "다크 모드 사용 중" : "라이트 모드 사용 중";
+        els.themeToggleButton.setAttribute("aria-label", els.themeToggleButton.title);
+      }
+
+      try {
+        localStorage.setItem("lecture-summarizer-theme-v1", value);
+      } catch (error) { }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.contains("theme-dark");
+      applyTheme(isDark ? "light" : "dark");
+    }
+
+    function loadUiSettings() {
+      const savedTheme = localStorage.getItem("lecture-summarizer-theme-v1") || "light";
+      applyTheme(savedTheme);
+      try {
+        const raw = localStorage.getItem(UI_SETTINGS_KEY);
+        if (!raw) return;
+        const settings = JSON.parse(raw);
+        if (settings.language) els.languageSelect.value = settings.language;
+        if (settings.model) els.modelSelect.value = normalizeModelSetting(settings.model);
+        if (settings.chunkLimit) els.chunkLimitInput.value = settings.chunkLimit;
+        if (settings.questionMode) document.getElementById("questionMode").value = settings.questionMode;
+        if (settings.chunkRatio) els.chunkRatioInput.value = settings.chunkRatio;
+        if (settings.globalRatio) els.globalRatioInput.value = settings.globalRatio;
+        if (settings.globalInterval) els.globalIntervalInput.value = settings.globalInterval;
+        if (settings.globalFormat) els.globalFormatInput.value = settings.globalFormat;
+        if (settings.pipSource) els.pipSourceSelect.value = settings.pipSource;
+        if (settings.mobilePanel) els.mobilePanelSelect.value = settings.mobilePanel;
+        if (settings.qaHeight) setQaPanelHeight(Number(settings.qaHeight));
+      } catch (error) {
+        console.warn("UI settings load failed", error);
+      }
+    }
+
+    function getApiKey() {
+      return els.apiKeyInput.value.trim() || localStorage.getItem(API_KEY_STORAGE_KEY) || "";
+    }
+
+    function getSelectedModel() {
+      const model = normalizeModelSetting(els.modelSelect.value);
+      if (model === "local") {
+        throw new Error("로컬 모델은 아직 연결하지 않았습니다.");
+      }
+      return model;
+    }
+
+    async function callGemini(prompt, maxOutputTokens = 2048) {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error("Gemini API 키가 없습니다. 상단에 API 키를 입력하고 저장하세요.");
+      }
+
+      const model = getSelectedModel();
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            topP: 0.9,
+            maxOutputTokens,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const message = data?.error?.message || `Gemini API 오류: ${response.status}`;
+        throw new Error(message);
+      }
+
+      const text = data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("")
+        .trim();
+
+      if (!text) {
+        throw new Error("Gemini 응답에서 텍스트를 찾지 못했습니다.");
+      }
+
+      return text;
+    }
+
+    function getOutputLanguageLabel() {
+      return {
+        "ko-KR": "한국어",
+        "en-US": "영어",
+        "ja-JP": "일본어",
+      }[els.languageSelect.value] || "한국어";
+    }
+
+    function getChunkSummaryTargetChars(sourceText) {
+      const configuredLimit = Number(els.chunkLimitInput.value || 3000);
+      const sourceLength = sourceText.length || configuredLimit;
+      const ratio = Number(els.chunkRatioInput.value || 10);
+      const base = Math.round(Math.min(configuredLimit, sourceLength) / ratio);
+
+      return Math.max(120, Math.min(base, 600));
+    }
+
+    function buildChunkSummaryPrompt(sourceText) {
+      const targetChars = getChunkSummaryTargetChars(sourceText);
+
+      return `
+너는 수업 실시간 전사 내용을 정리하는 학습 보조 AI다.
+
+아래 원문을 ${targetChars}자 이내로 요약하라.
+반드시 ${getOutputLanguageLabel()}로 작성하라.
+
+출력 형식 규칙:
+- 마크다운 금지
+- 제목 금지
+- 번호 목록 금지
+- 불릿 금지
+- 굵게 표시 금지
+- 표 금지
+- 평범한 문장형 텍스트만 출력
+- 문장은 반드시 완결해서 끝내기
+- 원문에 없는 내용 추가 금지
+- 음성 인식 오류로 불확실한 내용은 "불확실함"이라고 표시
+
+요약 내용:
+핵심 개념, 중요한 용어, 교수자가 강조한 것으로 보이는 내용, 시험 대비 포인트를 자연스럽게 압축해서 작성하라.
+
+[구간 원문]
+${sourceText}
+`.trim();
+    }
+
+
+    function getGlobalSummaryTargetChars(fullText) {
+      const ratio = Number(els.globalRatioInput.value || 5);
+      const base = Math.round(fullText.length / ratio);
+      return Math.max(500, Math.min(base, 4000));
+    }
+
+    function buildGlobalSummaryPrompt(fullText) {
+      const targetChars = getGlobalSummaryTargetChars(fullText);
+      const format = els.globalFormatInput.value || "numbered";
+
+      if (format === "paragraph") {
+        return `
+너는 수업 전체 내용을 정리하는 학습 보조 AI다.
+
+아래 전체 전사를 약 ${targetChars}자 내외로 충분히 자세하게 요약하라.
+반드시 ${getOutputLanguageLabel()}로 작성하라.
+
+출력 형식 규칙:
+- 마크다운 제목 금지
+- 굵게 표시 금지
+- 표 금지
+- 불릿 금지
+- 번호 목록 금지
+- 자연스러운 문단형 텍스트로 작성
+- 주제가 바뀌면 문단을 나누기
+- 원문에 없는 내용 추가 금지
+- 음성 인식 오류로 불확실한 내용은 "불확실함"이라고 표시
+
+요약 내용:
+수업의 전체 흐름, 핵심 개념, 중요 용어, 교수자가 강조한 내용, 시험 대비 포인트를 정리하라.
+
+[전체 전사]
+${fullText}
+`.trim();
+      }
+
+      return `
+너는 수업 전체 내용을 정리하는 학습 보조 AI다.
+
+아래 전체 전사를 약 ${targetChars}자 내외로 충분히 자세하게 요약하라.
+반드시 ${getOutputLanguageLabel()}로 작성하라.
+
+출력 형식 규칙:
+- 마크다운 제목 금지
+- 굵게 표시 금지
+- 표 금지
+- 불릿 금지
+- 숫자 인덱스 형식 사용
+- 각 항목은 "1. 주제명: 설명" 형식으로 작성
+- 주제가 바뀌면 반드시 항목을 나누기
+- 항목 안의 설명은 2~4문장으로 작성
+- 원문에 없는 내용 추가 금지
+- 음성 인식 오류로 불확실한 내용은 "불확실함"이라고 표시
+
+요약 내용:
+수업의 전체 흐름을 주제별로 나누고, 각 주제마다 핵심 개념, 중요 용어, 교수자가 강조한 내용, 시험 대비 포인트를 정리하라.
+
+[전체 전사]
+${fullText}
+`.trim();
+    }
+
+    async function updateGlobalSummary() {
+      if (state.isSummarizingGlobal) return;
+
+      const fullText = getFullTranscriptText();
+      if (!fullText.trim()) {
+        setStatus("전체 요약할 전문이 없습니다.", state.isRecording);
+        return;
+      }
+
+      state.isSummarizingGlobal = true;
+      els.refreshGlobalSummaryButton.disabled = true;
+      els.globalSummaryPanel.textContent = "전체 요약 생성 중...";
+      setStatus("전체 요약 생성 중", state.isRecording);
+
+      try {
+        const targetChars = getGlobalSummaryTargetChars(fullText);
+        const maxOutputTokens = 8192;
+        const summary = await callGemini(buildGlobalSummaryPrompt(fullText), maxOutputTokens);
+
+        els.globalSummaryPanel.textContent = summary;
+        renderPipContent();
+        updateAllScrollBottomButtons();
+        state.lastGlobalSummaryAt = new Date();
+        saveToLocalStorage();
+        setStatus("전체 요약 생성 완료", state.isRecording);
+      } catch (error) {
+        els.globalSummaryPanel.textContent = `전체 요약 생성 실패: ${error.message}`;
+        setStatus("전체 요약 생성 실패", state.isRecording);
+      } finally {
+        state.isSummarizingGlobal = false;
+        els.refreshGlobalSummaryButton.disabled = false;
+      }
+    }
+
+    function getFullTranscriptText() {
+      return state.transcriptBlocks
+        .map(block => `[${block.time}] ${block.text}`)
+        .join("\\n");
+    }
+
+    function getPendingText() {
+      return state.transcriptBlocks
+        .slice(state.pendingStartIndex)
+        .map(block => `[${block.time}] ${block.text}`)
+        .join("\\n");
+    }
+
+    function addTranscriptBlock(text) {
+      const cleanText = text.trim();
+      if (!cleanText) return;
+
+      state.transcriptBlocks.push({
+        id: crypto.randomUUID(),
+        time: formatTime(),
+        text: cleanText,
+        summarized: false,
+      });
+
+      state.interimText = "";
+      renderTranscript();
+      renderPipContent();
+      maybeCreateChunkSummary();
+      saveToLocalStorage();
+    }
+
+    function maybeCreateChunkSummary() {
+      if (state.isSummarizingChunk) return;
+
+      const limit = Number(els.chunkLimitInput.value || 3000);
+      const pendingText = getPendingText();
+
+      if (pendingText.length < limit) return;
+      createChunkSummary(pendingText);
+    }
+
+    async function createChunkSummary(sourceText) {
+      if (state.isSummarizingChunk) return;
+
+      const startIndex = state.pendingStartIndex;
+      const endIndex = state.transcriptBlocks.length - 1;
+      if (startIndex > endIndex) return;
+
+      const startTime = state.transcriptBlocks[startIndex].time;
+      const endTime = state.transcriptBlocks[endIndex].time;
+
+      for (let i = startIndex; i <= endIndex; i += 1) {
+        state.transcriptBlocks[i].summarized = true;
+      }
+
+      state.pendingStartIndex = state.transcriptBlocks.length;
+
+      const summaryItem = {
+        id: crypto.randomUUID(),
+        startTime,
+        endTime,
+        sourceText,
+        summary: "요약 생성 중...",
+        status: "loading",
+      };
+
+      state.chunkSummaries.push(summaryItem);
+      renderTranscript();
+      renderChunkSummaries();
+      saveToLocalStorage();
+
+      state.isSummarizingChunk = true;
+      setStatus("부분 요약 생성 중", state.isRecording);
+
+      try {
+        const targetChars = getChunkSummaryTargetChars(sourceText);
+        const maxOutputTokens = Math.max(128, Math.ceil(targetChars * 1.2));
+        summaryItem.summary = await callGemini(buildChunkSummaryPrompt(sourceText), maxOutputTokens);
+        summaryItem.status = "done";
+        setStatus("부분 요약 생성 완료", state.isRecording);
+      } catch (error) {
+        summaryItem.summary = `요약 생성 실패: ${error.message}`;
+        summaryItem.status = "error";
+        setStatus("부분 요약 생성 실패", state.isRecording);
+      } finally {
+        state.isSummarizingChunk = false;
+        renderChunkSummaries();
+        saveToLocalStorage();
+        maybeCreateChunkSummary();
+      }
+    }
+
+    function isNearBottom(element, threshold = 80) {
+      return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+    }
+
+    function renderTranscript() {
+      const shouldAutoScroll = isNearBottom(els.transcriptPanel);
+      const previousScrollTop = els.transcriptPanel.scrollTop;
+
+      els.transcriptPanel.innerHTML = "";
+
+      if (state.transcriptBlocks.length === 0 && !state.interimText) {
+        els.transcriptPanel.appendChild(els.transcriptPlaceholder);
+        els.transcriptMeta.textContent = "0자 · 0블록";
+        return;
+      }
+
+      const fullLength = getFullTranscriptText().length;
+      els.transcriptMeta.textContent = `${fullLength.toLocaleString()}자 · ${state.transcriptBlocks.length}블록`;
+
+      for (const block of state.transcriptBlocks) {
+        const wrapper = document.createElement("div");
+        wrapper.className = `transcript-block${block.summarized ? " summarized" : ""}`;
+
+        const time = document.createElement("div");
+        time.className = "block-time";
+        time.textContent = block.summarized ? `${block.time} · 요약 구간 마킹됨` : block.time;
+
+        const body = document.createElement("div");
+        body.textContent = block.text;
+
+        wrapper.appendChild(time);
+        wrapper.appendChild(body);
+        els.transcriptPanel.appendChild(wrapper);
+      }
+
+      if (state.interimText) {
+        const interim = document.createElement("div");
+        interim.className = "interim-text";
+        interim.textContent = `인식 중: ${state.interimText}`;
+        els.transcriptPanel.appendChild(interim);
+      }
+
+      if (shouldAutoScroll) {
+        els.transcriptPanel.scrollTop = els.transcriptPanel.scrollHeight;
+      } else {
+        els.transcriptPanel.scrollTop = previousScrollTop;
+      }
+
+      updateAllScrollBottomButtons();
+    }
+
+
+    function deleteChunkSummary(id) {
+      const index = state.chunkSummaries.findIndex(item => item.id === id);
+      if (index === -1) return;
+
+      if (!confirm("이 부분 요약을 삭제할까요? 원문은 삭제되지 않습니다.")) return;
+
+      state.chunkSummaries.splice(index, 1);
+      renderChunkSummaries();
+      saveToLocalStorage();
+      setStatus("부분 요약을 삭제했습니다.", state.isRecording);
+    }
+
+    async function retryChunkSummary(id) {
+      const item = state.chunkSummaries.find(summary => summary.id === id);
+      if (!item || !item.sourceText) return;
+
+      item.summary = "요약 재생성 중...";
+      item.status = "loading";
+      renderChunkSummaries();
+      saveToLocalStorage();
+
+      setStatus("부분 요약 재생성 중", state.isRecording);
+
+      try {
+        const targetChars = getChunkSummaryTargetChars(item.sourceText);
+        const maxOutputTokens = Math.max(128, Math.ceil(targetChars * 1.2));
+        item.summary = await callGemini(buildChunkSummaryPrompt(item.sourceText), maxOutputTokens);
+        item.status = "done";
+        setStatus("부분 요약 재생성 완료", state.isRecording);
+      } catch (error) {
+        item.summary = `요약 재생성 실패: ${error.message}`;
+        item.status = "error";
+        setStatus("부분 요약 재생성 실패", state.isRecording);
+      } finally {
+        renderChunkSummaries();
+        saveToLocalStorage();
+      }
+    }
+
+    function renderChunkSummaries() {
+      els.chunkSummaryPanel.innerHTML = "";
+
+      if (state.chunkSummaries.length === 0) {
+        els.chunkSummaryPanel.appendChild(els.chunkSummaryPlaceholder);
+        els.chunkSummaryMeta.textContent = "0개";
+        return;
+      }
+
+      els.chunkSummaryMeta.textContent = `${state.chunkSummaries.length}개`;
+
+      state.chunkSummaries.forEach((item, index) => {
+        const card = document.createElement("div");
+        card.className = "summary-card";
+
+        const title = document.createElement("div");
+        title.className = "summary-card-title";
+        const statusLabel = item.status === "loading" ? " · 생성 중" : item.status === "error" ? " · 실패" : "";
+        title.textContent = `부분 요약 ${index + 1} · ${item.startTime}~${item.endTime}${statusLabel}`;
+
+        const body = document.createElement("div");
+        body.className = "summary-card-body";
+        body.textContent = item.summary;
+
+        const actions = document.createElement("div");
+        actions.className = "card-actions";
+
+        const retryButton = document.createElement("button");
+        retryButton.className = "small-button";
+        retryButton.textContent = item.status === "error" ? "재시도" : "다시 생성";
+        retryButton.addEventListener("click", () => retryChunkSummary(item.id));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "small-button danger";
+        deleteButton.textContent = "삭제";
+        deleteButton.addEventListener("click", () => deleteChunkSummary(item.id));
+
+        actions.appendChild(retryButton);
+        actions.appendChild(deleteButton);
+
+        card.appendChild(title);
+        card.appendChild(body);
+        card.appendChild(actions);
+        els.chunkSummaryPanel.appendChild(card);
+      });
+
+      els.chunkSummaryPanel.scrollTop = els.chunkSummaryPanel.scrollHeight;
+      applySearchFilter();
+      renderPipContent();
+      updateAllScrollBottomButtons();
+    }
+
+    function setupSpeechRecognition() {
+      if (!SpeechRecognition) {
+        setStatus("이 브라우저는 Web Speech API를 지원하지 않습니다.");
+        els.startButton.disabled = true;
+        return null;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = els.languageSelect.value || "ko-KR";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        state.isRecording = true;
+        els.startButton.disabled = true;
+        els.stopButton.disabled = false;
+        setStatus("음성 인식 중", true);
+      };
+
+      recognition.onresult = event => {
+        let finalText = "";
+        let interimText = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript;
+          } else {
+            interimText += transcript;
+          }
+        }
+
+        state.interimText = interimText.trim();
+
+        if (finalText.trim()) {
+          addTranscriptBlock(finalText);
+        } else {
+          renderTranscript();
+          renderPipContent();
+        }
+      };
+
+      recognition.onerror = event => {
+        const messages = {
+          "no-speech": "음성이 감지되지 않았습니다.",
+          "audio-capture": "마이크를 찾을 수 없습니다.",
+          "not-allowed": "마이크 권한이 차단되었습니다.",
+          "service-not-allowed": "Chrome 음성 인식 서비스가 허용되지 않았습니다.",
+          "network": "Chrome 음성 인식 네트워크 오류입니다.",
+          "aborted": "음성 인식이 중단되었습니다.",
+        };
+        setStatus(messages[event.error] || `음성 인식 오류: ${event.error}`, false);
+      };
+
+      recognition.onend = () => {
+        state.isRecording = false;
+        els.startButton.disabled = false;
+        els.stopButton.disabled = true;
+
+        if (state.autoRestart) {
+          try {
+            recognition.start();
+          } catch (error) {
+            setStatus("자동 재시작 실패");
+          }
+          return;
+        }
+
+        setStatus("중지됨");
+      };
+
+      return recognition;
+    }
+
+    function startRecognition() {
+      if (!state.recognition) {
+        state.recognition = setupSpeechRecognition();
+      }
+      if (!state.recognition || state.isRecording) return;
+
+      state.recognition.lang = els.languageSelect.value || "ko-KR";
+      state.autoRestart = true;
+
+      try {
+        state.recognition.start();
+      } catch (error) {
+        setStatus("음성 인식을 시작할 수 없습니다.");
+      }
+    }
+
+    function stopRecognition() {
+      if (!state.recognition) return;
+      state.autoRestart = false;
+      state.recognition.stop();
+      saveToLocalStorage();
+    }
+
+    function clearAll() {
+      stopRecognition();
+      state.transcriptBlocks = [];
+      state.chunkSummaries = [];
+      state.pendingStartIndex = 0;
+      state.interimText = "";
+      state.qaHistory = [];
+      renderTranscript();
+      renderChunkSummaries();
+      els.globalSummaryPanel.innerHTML = '<div class="placeholder">다음 단계에서 10분마다 전체 전문 요약을 붙입니다.</div>';
+      els.answerBox.innerHTML = '<span class="placeholder">질문 답변이 이곳에 표시됩니다. Ctrl+Enter로도 질문할 수 있습니다.</span>';
+      clearSavedData();
+      setStatus("초기화됨");
+    }
+
+    function manualMark() {
+      const pendingText = getPendingText();
+      if (!pendingText.trim()) {
+        setStatus("마킹할 새 원문이 없습니다.");
+        return;
+      }
+
+      createChunkSummary(pendingText);
+    }
+
+
+
+    function getRecentTranscriptText(blockCount = 20) {
+      return state.transcriptBlocks
+        .slice(-blockCount)
+        .map(block => `[${block.time}] ${block.text}`)
+        .join("\n");
+    }
+
+    function getChunkSummariesText() {
+      return state.chunkSummaries
+        .filter(item => item.status === "done" && item.summary && item.summary.trim())
+        .map((item, index) => `부분 요약 ${index + 1} (${item.startTime}~${item.endTime}): ${item.summary}`)
+        .join("\n\n");
+    }
+
+    function getQuestionContext(mode) {
+      const summaries = getChunkSummariesText();
+      const fullTranscript = getFullTranscriptText();
+      const recentTranscript = getRecentTranscriptText(20);
+
+      if (mode === "summary") {
+        return {
+          label: "부분요약본 기반",
+          text: summaries || "아직 생성된 부분요약본이 없습니다.",
+        };
+      }
+
+      if (mode === "transcript") {
+        return {
+          label: "전체 전문 기반",
+          text: fullTranscript || "아직 생성된 전문이 없습니다.",
+        };
+      }
+
+      return {
+        label: "하이브리드: 부분요약 + 최근 전문",
+        text: `[부분요약본]\n${summaries || "아직 생성된 부분요약본이 없습니다."}\n\n[최근 전문]\n${recentTranscript || "아직 생성된 최근 전문이 없습니다."}`,
+      };
+    }
+
+    function buildQuestionPrompt(question, mode) {
+      const context = getQuestionContext(mode);
+
+      return `
+너는 수업 기록을 바탕으로만 답변하는 학습 보조 AI다.
+반드시 ${getOutputLanguageLabel()}로 답변하라.
+
+규칙:
+- 제공된 수업 기록 안에서만 답변
+- 기록에 없는 내용은 "수업 기록에서 확인되지 않습니다"라고 말하기
+- 확실하지 않은 내용은 추측하지 말고 불확실하다고 표시
+- 가능한 경우 관련 시간대나 부분요약 번호를 언급
+- 답변은 읽기 쉽게 작성
+- 필요하면 숫자 목록 사용 가능
+- 마크다운 표는 사용하지 않기
+- **별표 강조**를 사용하여 강조 표시 금지
+
+[사용한 자료 유형]
+${context.label}
+
+[수업 기록]
+${context.text}
+
+[질문]
+${question}
+`.trim();
+    }
+
+
+    function deleteQaItem(index) {
+      if (index < 0 || index >= state.qaHistory.length) return;
+      if (!confirm("이 질문/답변 기록을 삭제할까요?")) return;
+
+      state.qaHistory.splice(index, 1);
+      renderQaHistory();
+      saveToLocalStorage();
+      setStatus("질문 기록을 삭제했습니다.", state.isRecording);
+    }
+
+    async function retryQaItem(index) {
+      const item = state.qaHistory[index];
+      if (!item) return;
+
+      item.answer = "답변 재생성 중...";
+      item.status = "loading";
+      renderQaHistory();
+      saveToLocalStorage();
+
+      state.isAnsweringQuestion = true;
+      els.askButton.disabled = true;
+      setStatus("질문 답변 재생성 중", state.isRecording);
+
+      try {
+        item.answer = await callGemini(buildQuestionPrompt(item.question, item.mode), 4096);
+        item.status = "done";
+        item.time = formatTime();
+        setStatus("질문 답변 재생성 완료", state.isRecording);
+      } catch (error) {
+        item.answer = `답변 재생성 실패: ${error.message}`;
+        item.status = "error";
+        setStatus("질문 답변 재생성 실패", state.isRecording);
+      } finally {
+        state.isAnsweringQuestion = false;
+        els.askButton.disabled = false;
+        renderQaHistory();
+        saveToLocalStorage();
+      }
+    }
+
+    function renderQaHistory() {
+      if (!state.qaHistory.length) {
+        els.answerBox.innerHTML = '<span class="placeholder">질문 답변이 이곳에 표시됩니다.</span>';
+        return;
+      }
+
+      els.answerBox.innerHTML = "";
+
+      state.qaHistory.forEach((item, index) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "summary-card";
+
+        const title = document.createElement("div");
+        title.className = "summary-card-title";
+        title.textContent = `질문 ${index + 1} · ${item.modeLabel} · ${item.time}`;
+
+        const question = document.createElement("div");
+        question.className = "summary-card-body";
+        question.textContent = `Q. ${item.question}`;
+
+        const answer = document.createElement("div");
+        answer.className = "summary-card-body";
+        answer.style.marginTop = "8px";
+        answer.textContent = `A. ${item.answer}`;
+
+        const actions = document.createElement("div");
+        actions.className = "card-actions";
+
+        const retryButton = document.createElement("button");
+        retryButton.className = "small-button";
+        retryButton.textContent = item.status === "error" ? "재시도" : "다시 생성";
+        retryButton.addEventListener("click", () => retryQaItem(index));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "small-button danger";
+        deleteButton.textContent = "삭제";
+        deleteButton.addEventListener("click", () => deleteQaItem(index));
+
+        actions.appendChild(retryButton);
+        actions.appendChild(deleteButton);
+
+        wrapper.appendChild(title);
+        wrapper.appendChild(question);
+        wrapper.appendChild(answer);
+        wrapper.appendChild(actions);
+        els.answerBox.appendChild(wrapper);
+      });
+
+      els.answerBox.scrollTop = els.answerBox.scrollHeight;
+      applySearchFilter();
+      renderPipContent();
+      updateAllScrollBottomButtons();
+    }
+
+    async function askQuestion() {
+      if (state.isAnsweringQuestion) return;
+
+      const questionInput = document.getElementById("questionInput");
+      const questionMode = document.getElementById("questionMode");
+      const question = questionInput.value.trim();
+      const mode = questionMode.value;
+
+      if (!question) {
+        setStatus("질문을 입력하세요.", state.isRecording);
+        return;
+      }
+
+      if (!hasLectureData()) {
+        setStatus("질문할 수업 기록이 없습니다.", state.isRecording);
+        return;
+      }
+
+      const modeLabel = questionMode.options[questionMode.selectedIndex].text;
+      const pendingItem = {
+        question,
+        answer: "답변 생성 중...",
+        mode,
+        modeLabel,
+        time: formatTime(),
+        status: "loading",
+      };
+
+      state.qaHistory.push(pendingItem);
+      renderQaHistory();
+      saveToLocalStorage();
+
+      state.isAnsweringQuestion = true;
+      els.askButton.disabled = true;
+      setStatus("질문 답변 생성 중", state.isRecording);
+
+      try {
+        pendingItem.answer = await callGemini(buildQuestionPrompt(question, mode), 4096);
+        pendingItem.status = "done";
+        questionInput.value = "";
+        setStatus("질문 답변 생성 완료", state.isRecording);
+      } catch (error) {
+        pendingItem.answer = `답변 생성 실패: ${error.message}`;
+        pendingItem.status = "error";
+        setStatus("질문 답변 생성 실패", state.isRecording);
+      } finally {
+        state.isAnsweringQuestion = false;
+        els.askButton.disabled = false;
+        renderQaHistory();
+        saveToLocalStorage();
+      }
+    }
+
+
+
+
+
+    function openSidebar() {
+      els.sessionSidebar.classList.add("open");
+      els.sidebarBackdrop.classList.add("open");
+    }
+
+    function closeSidebar() {
+      els.sessionSidebar.classList.remove("open");
+      els.sidebarBackdrop.classList.remove("open");
+    }
+
+    function createSessionId() {
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function getSessionTitle() {
+      return els.sessionTitleInput.value.trim() || "제목 없는 수업";
+    }
+
+    function getSessionIndex() {
+      try {
+        const raw = localStorage.getItem(SESSION_INDEX_KEY);
+        const index = raw ? JSON.parse(raw) : [];
+        return Array.isArray(index) ? index : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function setSessionIndex(index) {
+      localStorage.setItem(SESSION_INDEX_KEY, JSON.stringify(index));
+    }
+
+    function buildSessionPayload() {
+      return {
+        id: state.currentSessionId || createSessionId(),
+        title: getSessionTitle(),
+        updatedAt: new Date().toISOString(),
+        transcriptBlocks: state.transcriptBlocks,
+        chunkSummaries: state.chunkSummaries,
+        pendingStartIndex: state.pendingStartIndex,
+        qaHistory: state.qaHistory,
+        globalSummaryText: els.globalSummaryPanel.textContent,
+        lastGlobalSummaryAt: state.lastGlobalSummaryAt ? state.lastGlobalSummaryAt.toISOString() : null,
+        settings: {
+          language: els.languageSelect.value,
+          model: els.modelSelect.value,
+          chunkLimit: els.chunkLimitInput.value,
+          questionMode: document.getElementById("questionMode").value,
+          chunkRatio: els.chunkRatioInput.value,
+          globalRatio: els.globalRatioInput.value,
+          globalInterval: els.globalIntervalInput.value,
+          globalFormat: els.globalFormatInput.value,
+          pipSource: els.pipSourceSelect.value,
+        },
+      };
+    }
+
+    function refreshSessionSelect() {
+      const index = getSessionIndex().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      els.sessionSelect.innerHTML = '<option value="">저장된 수업</option>';
+
+      index.forEach(item => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = `${item.title} · ${new Date(item.updatedAt).toLocaleString("ko-KR")}`;
+        els.sessionSelect.appendChild(option);
+      });
+
+      if (state.currentSessionId) {
+        els.sessionSelect.value = state.currentSessionId;
+      }
+    }
+
+    function saveCurrentSession() {
+      if (!hasLectureData() && !els.sessionTitleInput.value.trim()) {
+        setStatus("저장할 수업 내용이나 제목이 없습니다.", state.isRecording);
+        return;
+      }
+
+      const payload = buildSessionPayload();
+      state.currentSessionId = payload.id;
+
+      localStorage.setItem(`${SESSION_PREFIX}${payload.id}`, JSON.stringify(payload));
+
+      const index = getSessionIndex();
+      const existingIndex = index.findIndex(item => item.id === payload.id);
+      const indexItem = {
+        id: payload.id,
+        title: payload.title,
+        updatedAt: payload.updatedAt,
+      };
+
+      if (existingIndex >= 0) {
+        index[existingIndex] = indexItem;
+      } else {
+        index.push(indexItem);
+      }
+
+      setSessionIndex(index);
+      refreshSessionSelect();
+      saveToLocalStorage();
+      setStatus("현재 수업을 저장했습니다.", state.isRecording);
+    }
+
+    function loadSessionById(id) {
+      if (!id) {
+        setStatus("불러올 수업을 선택하세요.", state.isRecording);
+        return;
+      }
+
+      if (hasLectureData() && !confirm("현재 화면의 내용을 선택한 수업으로 교체할까요? 현재 내용은 자동 저장되어 있지만, 별도 수업으로 저장하려면 먼저 '수업 저장'을 누르세요.")) {
+        return;
+      }
+
+      const raw = localStorage.getItem(`${SESSION_PREFIX}${id}`);
+      if (!raw) {
+        setStatus("저장된 수업 데이터를 찾지 못했습니다.", state.isRecording);
+        return;
+      }
+
+      try {
+        const saved = JSON.parse(raw);
+        state.currentSessionId = saved.id;
+        setSessionTitle(saved.title || "");
+        state.transcriptBlocks = Array.isArray(saved.transcriptBlocks) ? saved.transcriptBlocks : [];
+        state.chunkSummaries = Array.isArray(saved.chunkSummaries) ? saved.chunkSummaries : [];
+        state.pendingStartIndex = Number.isInteger(saved.pendingStartIndex) ? saved.pendingStartIndex : state.transcriptBlocks.length;
+        state.qaHistory = Array.isArray(saved.qaHistory) ? saved.qaHistory : [];
+        state.lastGlobalSummaryAt = saved.lastGlobalSummaryAt ? new Date(saved.lastGlobalSummaryAt) : null;
+
+        if (saved.settings) {
+          if (saved.settings.language) els.languageSelect.value = saved.settings.language;
+          if (saved.settings.model) els.modelSelect.value = normalizeModelSetting(saved.settings.model);
+          if (saved.settings.chunkLimit) els.chunkLimitInput.value = saved.settings.chunkLimit;
+          if (saved.settings.questionMode) document.getElementById("questionMode").value = saved.settings.questionMode;
+          if (saved.settings.chunkRatio) els.chunkRatioInput.value = saved.settings.chunkRatio;
+          if (saved.settings.globalRatio) els.globalRatioInput.value = saved.settings.globalRatio;
+          if (saved.settings.globalInterval) els.globalIntervalInput.value = saved.settings.globalInterval;
+          if (saved.settings.globalFormat) els.globalFormatInput.value = saved.settings.globalFormat;
+          if (saved.settings.pipSource) els.pipSourceSelect.value = saved.settings.pipSource;
+          resetGlobalSummaryTimer();
+        }
+
+        els.globalSummaryPanel.textContent = saved.globalSummaryText || "전체 요약 없음";
+
+        renderTranscript();
+        renderChunkSummaries();
+        renderQaHistory();
+        refreshSessionSelect();
+        saveToLocalStorage();
+        saveUiSettings();
+        setStatus("저장된 수업을 불러왔습니다.", state.isRecording);
+      } catch (error) {
+        setStatus("수업 데이터를 불러오지 못했습니다.", state.isRecording);
+      }
+    }
+
+
+    function deleteSelectedSession() {
+      const id = els.sessionSelect.value;
+      if (!id) {
+        setStatus("삭제할 수업을 선택하세요.", state.isRecording);
+        return;
+      }
+
+      const index = getSessionIndex();
+      const item = index.find(session => session.id === id);
+      const title = item?.title || "선택한 수업";
+
+      if (!confirm(`"${title}" 수업을 삭제할까요? 저장된 목록에서 제거됩니다.`)) return;
+
+      localStorage.removeItem(`${SESSION_PREFIX}${id}`);
+      const nextIndex = index.filter(session => session.id !== id);
+      setSessionIndex(nextIndex);
+
+      if (state.currentSessionId === id) {
+        state.currentSessionId = null;
+      }
+
+      refreshSessionSelect();
+      saveToLocalStorage();
+      setStatus("저장된 수업을 삭제했습니다.", state.isRecording);
+    }
+
+    function startNewSession() {
+      if (hasLectureData() && !confirm("새 수업을 시작할까요? 현재 내용은 자동 저장되어 있지만, 별도 수업으로 저장하려면 먼저 '수업 저장'을 누르세요.")) {
+        return;
+      }
+
+      stopRecognition();
+      state.currentSessionId = null;
+      state.transcriptBlocks = [];
+      state.chunkSummaries = [];
+      state.qaHistory = [];
+      state.pendingStartIndex = 0;
+      state.interimText = "";
+      state.lastGlobalSummaryAt = null;
+      setSessionTitle("");
+      els.sessionSelect.value = "";
+      els.globalSummaryPanel.innerHTML = '<div class="placeholder">다음 단계에서 10분마다 전체 전문 요약을 붙입니다.</div>';
+      renderTranscript();
+      renderChunkSummaries();
+      renderQaHistory();
+      clearSavedData();
+      setStatus("새 수업을 시작했습니다.");
+    }
+
+    function getSafeFileNamePart(text) {
+      return text
+        .replace(/[\\/:*?"<>|]/g, "-")
+        .replace(/\s+/g, "_")
+        .slice(0, 40);
+    }
+
+    function openExportModal() {
+      if (!hasLectureData()) {
+        setStatus("내보낼 수업 기록이 없습니다.", state.isRecording);
+        return;
+      }
+
+      els.exportModalBackdrop.classList.add("open");
+    }
+
+    function closeExportModal() {
+      els.exportModalBackdrop.classList.remove("open");
+    }
+
+    function getExportOptions() {
+      return {
+        format: els.exportFormatSelect.value,
+        includeGlobalSummary: els.exportGlobalSummary.checked,
+        includeChunkSummaries: els.exportChunkSummaries.checked,
+        includeQaHistory: els.exportQaHistory.checked,
+        includeTranscript: els.exportTranscript.checked,
+      };
+    }
+
+    function buildMarkdownExport(options) {
+      const exportedAt = new Date();
+      const fullTranscript = getFullTranscriptText();
+      const globalSummary = els.globalSummaryPanel.textContent.trim();
+
+      const sections = [
+        `# ${getSessionTitle()}
+
+내보낸 시간: ${exportedAt.toLocaleString("ko-KR")}
+전문 글자 수: ${fullTranscript.length.toLocaleString()}자
+전문 블록 수: ${state.transcriptBlocks.length.toLocaleString()}개
+부분 요약 수: ${state.chunkSummaries.length.toLocaleString()}개
+질문 수: ${state.qaHistory.length.toLocaleString()}개`,
+      ];
+
+      if (options.includeGlobalSummary) {
+        sections.push(`## 전체 요약
+
+${globalSummary || "전체 요약 없음"}`);
+      }
+
+      if (options.includeChunkSummaries) {
+        const chunkSummaryMarkdown = state.chunkSummaries.length
+          ? state.chunkSummaries.map((item, index) => {
+            return `### 부분 요약 ${index + 1} (${item.startTime}~${item.endTime})\n\n${item.summary}`;
+          }).join("\n\n")
+          : "부분 요약 없음";
+
+        sections.push(`## 부분 요약
+
+${chunkSummaryMarkdown}`);
+      }
+
+      if (options.includeQaHistory) {
+        const qaMarkdown = state.qaHistory.length
+          ? state.qaHistory.map((item, index) => {
+            return `### 질문 ${index + 1} (${item.time})\n\n자료 유형: ${item.modeLabel}\n\nQ. ${item.question}\n\nA. ${item.answer}`;
+          }).join("\n\n")
+          : "질문 기록 없음";
+
+        sections.push(`## 질문/답변 기록
+
+${qaMarkdown}`);
+      }
+
+      if (options.includeTranscript) {
+        sections.push(`## 전체 전문
+
+${fullTranscript || "전문 없음"}`);
+      }
+
+      return sections.join("\n\n---\n\n") + "\n";
+    }
+
+    function buildTxtExport(options) {
+      const exportedAt = new Date();
+      const fullTranscript = getFullTranscriptText();
+      const globalSummary = els.globalSummaryPanel.textContent.trim();
+
+      const sections = [
+        `${getSessionTitle()}
+
+내보낸 시간: ${exportedAt.toLocaleString("ko-KR")}
+전문 글자 수: ${fullTranscript.length.toLocaleString()}자
+전문 블록 수: ${state.transcriptBlocks.length.toLocaleString()}개
+부분 요약 수: ${state.chunkSummaries.length.toLocaleString()}개
+질문 수: ${state.qaHistory.length.toLocaleString()}개`,
+      ];
+
+      if (options.includeGlobalSummary) {
+        sections.push(`전체 요약
+
+${globalSummary || "전체 요약 없음"}`);
+      }
+
+      if (options.includeChunkSummaries) {
+        const chunks = state.chunkSummaries.length
+          ? state.chunkSummaries.map((item, index) => {
+            return `부분 요약 ${index + 1} (${item.startTime}~${item.endTime})\n${item.summary}`;
+          }).join("\n\n")
+          : "부분 요약 없음";
+
+        sections.push(`부분 요약
+
+${chunks}`);
+      }
+
+      if (options.includeQaHistory) {
+        const qa = state.qaHistory.length
+          ? state.qaHistory.map((item, index) => {
+            return `질문 ${index + 1} (${item.time})\n자료 유형: ${item.modeLabel}\nQ. ${item.question}\nA. ${item.answer}`;
+          }).join("\n\n")
+          : "질문 기록 없음";
+
+        sections.push(`질문/답변 기록
+
+${qa}`);
+      }
+
+      if (options.includeTranscript) {
+        sections.push(`전체 전문
+
+${fullTranscript || "전문 없음"}`);
+      }
+
+      return sections.join("\n\n==============================\n\n") + "\n";
+    }
+
+
+    function buildExportHtml(options) {
+      const markdownLikeText = buildTxtExport(options);
+      return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(getSessionTitle())}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+      padding: 32px;
+      color: var(--text);
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: keep-all;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <pre>${escapeHtml(markdownLikeText)}</pre>
+</body>
+</html>`;
+    }
+
+    function exportAsPdf(options) {
+      const exportHtml = buildExportHtml(options);
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        setStatus("팝업이 차단되어 PDF 창을 열 수 없습니다.", state.isRecording);
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(exportHtml);
+      printWindow.document.close();
+
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+    }
+
+    function buildDocxHtml(options) {
+      return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(getSessionTitle())}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body {
+      font-family: "Malgun Gothic", Arial, sans-serif;
+      line-height: 1.6;
+    }
+    pre {
+      white-space: pre-wrap;
+      font-family: "Malgun Gothic", Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <pre>${escapeHtml(buildTxtExport(options))}</pre>
+</body>
+</html>`;
+    }
+
+    function exportAsDocx(filename, options) {
+      const content = buildDocxHtml(options);
+      const converted = `\ufeff${content}`;
+      downloadTextFile(filename, converted, "application/vnd.openxmlformats-officedocument.wordprocessingml.document;charset=utf-8");
+    }
+
+    function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-8") {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportWithOptions() {
+      if (!hasLectureData()) {
+        setStatus("내보낼 수업 기록이 없습니다.", state.isRecording);
+        return;
+      }
+
+      const options = getExportOptions();
+
+      if (
+        !options.includeGlobalSummary &&
+        !options.includeChunkSummaries &&
+        !options.includeQaHistory &&
+        !options.includeTranscript
+      ) {
+        setStatus("내보낼 항목을 하나 이상 선택하세요.", state.isRecording);
+        return;
+      }
+
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const languagePart = getSafeFileNamePart(getOutputLanguageLabel());
+      const titlePart = getSafeFileNamePart(getSessionTitle());
+
+      if (options.format === "txt") {
+        const filename = `${titlePart}-${languagePart}-${datePart}.txt`;
+        downloadTextFile(filename, buildTxtExport(options), "text/plain;charset=utf-8");
+        setStatus("TXT 파일로 내보냈습니다.", state.isRecording);
+      } else if (options.format === "pdf") {
+        exportAsPdf(options);
+        setStatus("PDF 저장 창을 열었습니다.", state.isRecording);
+      } else if (options.format === "docx") {
+        const filename = `${titlePart}-${languagePart}-${datePart}.docx`;
+        exportAsDocx(filename, options);
+        setStatus("DOCX 파일로 내보냈습니다.", state.isRecording);
+      } else {
+        const filename = `${titlePart}-${languagePart}-${datePart}.md`;
+        downloadTextFile(filename, buildMarkdownExport(options), "text/markdown;charset=utf-8");
+        setStatus("Markdown 파일로 내보냈습니다.", state.isRecording);
+      }
+
+      closeExportModal();
+    }
+
+    function getCurrentQaHeight() {
+      const rows = getComputedStyle(els.app).gridTemplateRows.split(" ");
+      const lastRow = rows[rows.length - 1];
+      const parsed = Number.parseInt(lastRow, 10);
+      return Number.isFinite(parsed) ? parsed : 220;
+    }
+
+    function setQaPanelHeight(height) {
+      const viewportHeight = window.innerHeight;
+      const appPaddingY = 24;
+      const topbarHeight = document.querySelector(".topbar")?.offsetHeight || 64;
+      const rowGapTotal = 16;
+      const handleHeight = 8;
+      const mainMinHeight = window.matchMedia("(max-width: 760px), (orientation: portrait)").matches ? 180 : 120;
+      const minQaHeight = 160;
+
+      const maxHeight = viewportHeight - appPaddingY - topbarHeight - rowGapTotal - handleHeight - mainMinHeight;
+      const safeMaxHeight = Math.max(minQaHeight, maxHeight);
+      const safeHeight = Math.max(minQaHeight, Math.min(height, safeMaxHeight));
+
+      if (window.matchMedia("(max-width: 760px), (orientation: portrait)").matches) {
+        els.app.style.gridTemplateRows = `auto auto minmax(0, 1fr)`;
+      } else {
+        els.app.style.gridTemplateRows = `50px minmax(0, 1fr) 8px ${safeHeight}px`;
+      }
+    }
+
+    function setupPanelResizer() {
+      let isDragging = false;
+      let startY = 0;
+      let startHeight = 220;
+
+      els.verticalResizeHandle.addEventListener("mousedown", event => {
+        isDragging = true;
+        startY = event.clientY;
+        startHeight = getCurrentQaHeight();
+        els.verticalResizeHandle.classList.add("dragging");
+        document.body.style.userSelect = "none";
+        event.preventDefault();
+      });
+
+      window.addEventListener("mousemove", event => {
+        if (!isDragging) return;
+        const delta = startY - event.clientY;
+        setQaPanelHeight(startHeight + delta);
+      });
+
+      window.addEventListener("mouseup", () => {
+        if (!isDragging) return;
+        isDragging = false;
+        els.verticalResizeHandle.classList.remove("dragging");
+        document.body.style.userSelect = "";
+        saveUiSettings();
+      });
+
+      window.addEventListener("resize", () => {
+        setQaPanelHeight(getCurrentQaHeight());
+      });
+    }
+
+
+    function resetGlobalSummaryTimer() {
+      if (state.globalSummaryTimerId) {
+        clearInterval(state.globalSummaryTimerId);
+        state.globalSummaryTimerId = null;
+      }
+
+      const minutes = Number(els.globalIntervalInput.value || 10);
+
+      if (minutes <= 0) {
+        return;
+      }
+
+      state.globalSummaryTimerId = setInterval(() => {
+        if (!hasLectureData()) return;
+        updateGlobalSummary();
+      }, minutes * 60 * 1000);
+    }
+
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeRegExp(text) {
+      return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function highlightText(text, query) {
+      if (!query) return escapeHtml(text);
+      const regex = new RegExp(`(${escapeRegExp(query)})`, "gi");
+      return escapeHtml(text).replace(regex, '<mark class="search-highlight">$1</mark>');
+    }
+
+    function getSearchSnippet(text, query, radius = 45) {
+      const lowerText = text.toLowerCase();
+      const lowerQuery = query.toLowerCase();
+      const index = lowerText.indexOf(lowerQuery);
+
+      if (index === -1) return text.slice(0, 110);
+
+      const start = Math.max(0, index - radius);
+      const end = Math.min(text.length, index + query.length + radius);
+      return `${start > 0 ? "…" : ""}${text.slice(start, end)}${end < text.length ? "…" : ""}`;
+    }
+
+    function clearHighlights(container) {
+      container.querySelectorAll("[data-original-text]").forEach(el => {
+        el.textContent = el.dataset.originalText;
+      });
+    }
+
+    function applyHighlights(container, query) {
+      if (!query) return;
+
+      container.querySelectorAll(".transcript-block, .summary-card").forEach(card => {
+        if (card.style.display === "none") return;
+
+        card.querySelectorAll("div").forEach(el => {
+          if (el.children.length > 0) return;
+
+          const text = el.dataset.originalText || el.textContent || "";
+          el.dataset.originalText = text;
+
+          if (text.toLowerCase().includes(query.toLowerCase())) {
+            el.innerHTML = highlightText(text, query);
+          }
+        });
+      });
+    }
+
+    function collectSearchMatches(query) {
+      const matches = [];
+      if (!query) return matches;
+
+      state.transcriptBlocks.forEach((block, index) => {
+        const text = `[${block.time}] ${block.text}`;
+        if (text.toLowerCase().includes(query.toLowerCase())) {
+          matches.push({
+            type: "전문",
+            targetSelector: `#transcriptPanel .transcript-block:nth-of-type(${index + 1})`,
+            text,
+          });
+        }
+      });
+
+      state.chunkSummaries.forEach((item, index) => {
+        const text = `부분 요약 ${index + 1} (${item.startTime}~${item.endTime}) ${item.summary}`;
+        if (text.toLowerCase().includes(query.toLowerCase())) {
+          matches.push({
+            type: "부분 요약",
+            targetSelector: `#chunkSummaryPanel .summary-card:nth-of-type(${index + 1})`,
+            text,
+          });
+        }
+      });
+
+      state.qaHistory.forEach((item, index) => {
+        const text = `질문 ${index + 1} ${item.modeLabel} ${item.question} ${item.answer}`;
+        if (text.toLowerCase().includes(query.toLowerCase())) {
+          matches.push({
+            type: "질문/답변",
+            targetSelector: `#answerBox .summary-card:nth-of-type(${index + 1})`,
+            text,
+          });
+        }
+      });
+
+      return matches;
+    }
+
+    function renderSearchResults(query, matches) {
+      const box = document.getElementById("searchResults");
+      if (!box) return;
+
+      box.innerHTML = "";
+
+      if (!query) {
+        box.classList.remove("open");
+        return;
+      }
+
+      const summary = document.createElement("div");
+      summary.className = "search-result-item";
+      summary.style.cursor = "default";
+      summary.innerHTML = `<div class="search-result-type">검색 결과</div>${matches.length}개 발견`;
+      box.appendChild(summary);
+
+      matches.slice(0, 8).forEach((match, visibleIndex) => {
+        const item = document.createElement("div");
+        item.className = "search-result-item";
+        item.innerHTML = `
+          <div class="search-result-type">${escapeHtml(match.type)}</div>
+          <div>${highlightText(getSearchSnippet(match.text, query), query)}</div>
+        `;
+
+        item.addEventListener("click", () => {
+          focusSearchResult(visibleIndex);
+        });
+
+        box.appendChild(item);
+      });
+
+      box.classList.add("open");
+    }
+
+
+    function clearActiveSearchMarker() {
+      document.querySelectorAll(".search-active").forEach(el => {
+        el.classList.remove("search-active");
+      });
+    }
+
+    function focusSearchResult(index) {
+      if (!state.searchMatches.length) {
+        state.activeSearchIndex = -1;
+        clearActiveSearchMarker();
+        return;
+      }
+
+      const safeIndex = ((index % state.searchMatches.length) + state.searchMatches.length) % state.searchMatches.length;
+      state.activeSearchIndex = safeIndex;
+
+      clearActiveSearchMarker();
+
+      const match = state.searchMatches[safeIndex];
+      const target = document.querySelector(match.targetSelector);
+
+      if (target) {
+        target.style.display = "";
+        target.classList.add("search-active");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      const box = document.getElementById("searchResults");
+      if (box) {
+        box.classList.add("open");
+      }
+    }
+
+    function goToNextSearchResult() {
+      if (!state.searchMatches.length) return;
+      focusSearchResult(state.activeSearchIndex + 1);
+    }
+
+    function goToPrevSearchResult() {
+      if (!state.searchMatches.length) return;
+      focusSearchResult(state.activeSearchIndex - 1);
+    }
+
+    function applySearchFilter() {
+      const query = (document.getElementById("searchInput")?.value || "").trim();
+
+      [els.transcriptPanel, els.chunkSummaryPanel, els.answerBox].forEach(clearHighlights);
+
+      function toggleByText(selector) {
+        document.querySelectorAll(selector).forEach(el => {
+          const text = (el.textContent || "").toLowerCase();
+          el.style.display = !query || text.includes(query.toLowerCase()) ? "" : "none";
+        });
+      }
+
+      toggleByText("#transcriptPanel .transcript-block");
+      toggleByText("#chunkSummaryPanel .summary-card");
+      toggleByText("#answerBox .summary-card");
+
+      [els.transcriptPanel, els.chunkSummaryPanel, els.answerBox].forEach(container => {
+        applyHighlights(container, query);
+      });
+
+      state.searchMatches = collectSearchMatches(query);
+      state.activeSearchIndex = -1;
+      clearActiveSearchMarker();
+      renderSearchResults(query, state.searchMatches);
+    }
+
+
+    function getPipSourceInfo() {
+      const source = els.pipSourceSelect.value;
+
+      if (source === "chunk") {
+        return {
+          title: "부분 요약",
+          sourceElement: els.chunkSummaryPanel,
+          isQa: false,
+        };
+      }
+
+      if (source === "global") {
+        return {
+          title: "전체 요약",
+          sourceElement: els.globalSummaryPanel,
+          isQa: false,
+        };
+      }
+
+      if (source === "qa") {
+        return {
+          title: "질문하기",
+          sourceElement: document.querySelector(".qa-panel"),
+          isQa: true,
+        };
+      }
+
+      return {
+        title: "실시간 전문",
+        sourceElement: els.transcriptPanel,
+        isQa: false,
+      };
+    }
+
+    function sanitizePipClone(root, isQa = false) {
+      if (!isQa) {
+        root.querySelectorAll("button").forEach(button => button.remove());
+      } else {
+        root.querySelectorAll(".card-actions").forEach(actions => actions.remove());
+      }
+
+      root.querySelectorAll("[id]").forEach(el => {
+        if (isQa && ["questionMode", "questionInput", "askButton"].includes(el.id)) {
+          el.setAttribute("data-source-id", el.id);
+        }
+        el.removeAttribute("id");
+      });
+
+      root.querySelectorAll("[style]").forEach(el => {
+        const display = el.style.display;
+        el.removeAttribute("style");
+        if (display === "none") el.style.display = "none";
+      });
+    }
+
+    function wirePipQaControls() {
+      if (!state.pipWindow || state.pipWindow.closed) return;
+
+      const doc = state.pipWindow.document;
+      const mode = doc.querySelector('[data-source-id="questionMode"]');
+      const input = doc.querySelector('[data-source-id="questionInput"]');
+      const button = doc.querySelector('[data-source-id="askButton"]');
+
+      if (mode) {
+        mode.value = document.getElementById("questionMode").value;
+        mode.addEventListener("change", () => {
+          document.getElementById("questionMode").value = mode.value;
+          saveUiSettings();
+        });
+      }
+
+      if (input) {
+        input.value = document.getElementById("questionInput").value;
+        input.addEventListener("input", () => {
+          document.getElementById("questionInput").value = input.value;
+        });
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            document.getElementById("questionInput").value = input.value;
+            askQuestion();
+          }
+        });
+      }
+
+      if (button) {
+        button.addEventListener("click", () => {
+          if (input) document.getElementById("questionInput").value = input.value;
+          if (mode) document.getElementById("questionMode").value = mode.value;
+          askQuestion();
+        });
+      }
+    }
+
+    function renderPipContent() {
+      if (!state.pipWindow || state.pipWindow.closed) return;
+
+      const info = getPipSourceInfo();
+      const container = state.pipWindow.document.getElementById("pipContent");
+      const title = state.pipWindow.document.getElementById("pipTitle");
+
+      if (!container || !title) return;
+
+      const shouldAutoScroll = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+      const previousScrollTop = container.scrollTop;
+
+      title.textContent = info.title;
+      container.innerHTML = "";
+
+      const clone = info.sourceElement.cloneNode(true);
+      sanitizePipClone(clone, info.isQa);
+      clone.classList.add("pip-cloned-panel");
+      if (info.isQa) clone.classList.add("pip-qa-panel");
+      container.appendChild(clone);
+
+      if (info.isQa) {
+        wirePipQaControls();
+      }
+
+      if (shouldAutoScroll) {
+        container.scrollTop = container.scrollHeight;
+      } else {
+        container.scrollTop = previousScrollTop;
+      }
+
+      updateAllScrollBottomButtons();
+    }
+
+    async function openPipWindow() {
+      if (!("documentPictureInPicture" in window)) {
+        setStatus("이 브라우저는 Document Picture-in-Picture를 지원하지 않습니다.", state.isRecording);
+        return;
+      }
+
+      try {
+        state.pipWindow = await window.documentPictureInPicture.requestWindow({
+          width: 460,
+          height: 560,
+        });
+
+        state.pipWindow.document.body.innerHTML = `
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+              background: #f5f6f8;
+              color: var(--text);
+            }
+            .pip-wrap {
+              height: 100vh;
+              display: flex;
+              flex-direction: column;
+            }
+            .pip-header {
+              padding: 10px 12px;
+              border-bottom: 1px solid #e5e7eb;
+              font-weight: 800;
+              background: #ffffff;
+            }
+            .pip-content-wrap {
+              position: relative;
+              flex: 1;
+              min-height: 0;
+              display: flex;
+            }
+            .pip-content {
+              flex: 1;
+              overflow-y: auto;
+              padding: 10px;
+              line-height: 1.55;
+              font-size: 14px;
+            }
+            .pip-scroll-bottom-button {
+              position: absolute;
+              right: 14px;
+              bottom: 14px;
+              z-index: 20;
+              width: 38px;
+              height: 38px;
+              border-radius: 999px;
+              border: none;
+              background: rgba(31, 41, 55, 0.72);
+              color: #ffffff;
+              font-size: 22px;
+              display: none;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+            }
+            .pip-scroll-bottom-button.visible {
+              display: flex;
+            }
+            .pip-cloned-panel {
+              height: auto;
+              min-height: 100%;
+              overflow: visible;
+            }
+            .panel-content {
+              overflow: visible;
+              padding: 0;
+            }
+            .placeholder {
+              color: #9ca3af;
+            }
+            .transcript-block {
+              margin: 0 0 10px;
+              padding: 10px;
+              border-radius: 10px;
+              background: #ffffff;
+              border: 1px solid #eef0f2;
+            }
+            .transcript-block.summarized {
+              background: var(--bg);
+              color: #6b7280;
+              border-color: #e5e7eb;
+            }
+            .block-time {
+              margin-bottom: 4px;
+              font-size: 12px;
+              font-weight: 700;
+              color: #6b7280;
+            }
+            .interim-text {
+              margin-top: 8px;
+              padding: 10px;
+              border-radius: 10px;
+              background: #eff6ff;
+              border: 1px dashed #93c5fd;
+              color: #1d4ed8;
+            }
+            .summary-card {
+              margin: 0 0 12px;
+              padding: 12px;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              background: #ffffff;
+            }
+            .summary-card-title {
+              margin-bottom: 6px;
+              font-size: 13px;
+              font-weight: 700;
+              color: #374151;
+            }
+            .summary-card-body {
+              white-space: pre-wrap;
+              word-break: keep-all;
+              overflow-wrap: anywhere;
+            }
+            .card-actions {
+              display: none;
+            }
+            .qa-panel.pip-qa-panel {
+              height: 100%;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+            }
+            .pip-qa-panel .answer-box {
+              order: 1;
+              min-height: 0;
+              max-height: 55vh;
+              overflow-y: auto;
+              padding: 10px;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              background: #ffffff;
+              white-space: pre-wrap;
+            }
+            .pip-qa-panel .qa-controls {
+              order: 2;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            .pip-qa-panel select,
+            .pip-qa-panel textarea,
+            .pip-qa-panel button {
+              width: 100%;
+              font: inherit;
+              border: 1px solid #d1d5db;
+              border-radius: 10px;
+            }
+            .pip-qa-panel select,
+            .pip-qa-panel button {
+              height: 36px;
+              padding: 0 10px;
+              background: #ffffff;
+            }
+            .pip-qa-panel textarea {
+              min-height: 90px;
+              resize: vertical;
+              padding: 10px;
+            }
+            .pip-qa-panel button.primary {
+              background: #2563eb;
+              border-color: #2563eb;
+              color: #ffffff;
+              font-weight: 700;
+            }
+            mark.search-highlight {
+              padding: 0 2px;
+              border-radius: 3px;
+              background: #fef08a;
+              color: inherit;
+            }
+          </style>
+          <div class="pip-wrap">
+            <div class="pip-header" id="pipTitle"></div>
+            <div class="pip-content-wrap">
+              <div class="pip-content" id="pipContent"></div>
+              <button class="pip-scroll-bottom-button" id="pipScrollBottomButton" title="맨 아래로">↓</button>
+            </div>
+          </div>
+        `;
+
+        state.pipWindow.addEventListener("pagehide", () => {
+          state.pipWindow = null;
+        });
+
+        renderPipContent();
+        const pipContent = state.pipWindow.document.getElementById("pipContent");
+        const pipButton = state.pipWindow.document.getElementById("pipScrollBottomButton");
+        if (pipContent && pipButton) {
+          pipContent.addEventListener("scroll", updateAllScrollBottomButtons);
+          pipButton.addEventListener("click", () => {
+            pipContent.scrollTo({ top: pipContent.scrollHeight, behavior: "smooth" });
+          });
+        }
+        updateAllScrollBottomButtons();
+        setStatus("PiP 창을 열었습니다.", state.isRecording);
+      } catch (error) {
+        setStatus(`PiP 창을 열 수 없습니다: ${error.message}`, state.isRecording);
+      }
+    }
+
+    function closePipWindow() {
+      if (state.pipWindow && !state.pipWindow.closed) {
+        state.pipWindow.close();
+      }
+      state.pipWindow = null;
+      setStatus("PiP 창을 닫았습니다.", state.isRecording);
+    }
+
+
+    function updateMobileActivePanel() {
+      const selected = els.mobilePanelSelect?.value || "transcript";
+
+      document.querySelectorAll(".main-grid .panel, .qa-panel").forEach(panel => {
+        panel.classList.remove("mobile-active-panel");
+      });
+
+      const target = selected === "chunk"
+        ? document.querySelector(".chunk-panel-wrap")
+        : selected === "global"
+          ? document.querySelector(".global-panel-wrap")
+          : selected === "qa"
+            ? document.querySelector(".qa-panel")
+            : document.querySelector(".transcript-panel-wrap");
+
+      if (target) {
+        target.classList.add("mobile-active-panel");
+      }
+    }
+
+    function toggleMobileTopbar() {
+      els.topbar.classList.toggle("mobile-expanded");
+      els.mobileTopbarToggleButton.textContent = els.topbar.classList.contains("mobile-expanded") ? "접기" : "메뉴";
+    }
+
+
+    function getScrollableTargets() {
+      return [
+        els.transcriptPanel,
+        els.chunkSummaryPanel,
+        els.globalSummaryPanel,
+        els.answerBox,
+      ].filter(Boolean);
+    }
+
+    function updateScrollBottomButtonForElement(element) {
+      const button = document.querySelector(`.scroll-bottom-button[data-scroll-target="${element.id}"]`);
+      if (!button) return;
+
+      const canScroll = element.scrollHeight > element.clientHeight + 4;
+      const isNearEnd = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+      button.classList.toggle("visible", canScroll && !isNearEnd);
+    }
+
+    function updateAllScrollBottomButtons() {
+      getScrollableTargets().forEach(updateScrollBottomButtonForElement);
+
+      if (state.pipWindow && !state.pipWindow.closed) {
+        const pipContent = state.pipWindow.document.getElementById("pipContent");
+        const pipButton = state.pipWindow.document.getElementById("pipScrollBottomButton");
+        if (pipContent && pipButton) {
+          const canScroll = pipContent.scrollHeight > pipContent.clientHeight + 4;
+          const isNearEnd = pipContent.scrollHeight - pipContent.scrollTop - pipContent.clientHeight < 80;
+          pipButton.classList.toggle("visible", canScroll && !isNearEnd);
+        }
+      }
+    }
+
+    function scrollElementToBottomById(id) {
+      const element = document.getElementById(id);
+      if (!element) return;
+      element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+    }
+
+    function setupScrollBottomButtons() {
+      document.querySelectorAll(".scroll-bottom-button[data-scroll-target]").forEach(button => {
+        button.addEventListener("click", () => {
+          scrollElementToBottomById(button.dataset.scrollTarget);
+        });
+      });
+
+      getScrollableTargets().forEach(element => {
+        element.addEventListener("scroll", () => updateScrollBottomButtonForElement(element));
+      });
+
+      window.addEventListener("resize", updateAllScrollBottomButtons);
+      updateAllScrollBottomButtons();
+    }
+
+    if (els.themeToggleButton) {
+      els.themeToggleButton.addEventListener("click", toggleTheme);
+    }
+
+    els.startButton.addEventListener("click", startRecognition);
+    els.stopButton.addEventListener("click", stopRecognition);
+    els.sidebarToggleButton.addEventListener("click", openSidebar);
+    els.sidebarCloseButton.addEventListener("click", closeSidebar);
+    els.sidebarBackdrop.addEventListener("click", closeSidebar);
+
+    els.saveSessionButton.addEventListener("click", saveCurrentSession);
+    els.loadSessionButton.addEventListener("click", () => {
+      loadSessionById(els.sessionSelect.value);
+      closeSidebar();
+    });
+    els.deleteSessionButton.addEventListener("click", deleteSelectedSession);
+    els.newSessionButton.addEventListener("click", () => {
+      startNewSession();
+      closeSidebar();
+    });
+    els.sessionTitleInput.addEventListener("input", syncSessionTitleFromSidebar);
+    els.headerSessionTitleInput.addEventListener("input", syncSessionTitleFromHeader);
+    document.getElementById("searchInput").addEventListener("input", applySearchFilter);
+    els.searchNextButton.addEventListener("click", goToNextSearchResult);
+    els.searchPrevButton.addEventListener("click", goToPrevSearchResult);
+    els.mobilePanelSelect.addEventListener("change", () => {
+      updateMobileActivePanel();
+      saveUiSettings();
+    });
+    els.mobileTopbarToggleButton.addEventListener("click", toggleMobileTopbar);
+    document.addEventListener("click", event => {
+      const wrap = document.querySelector(".search-wrap");
+      const box = document.getElementById("searchResults");
+      if (wrap && box && !wrap.contains(event.target)) box.classList.remove("open");
+    });
+    els.exportButton.addEventListener("click", openExportModal);
+    els.closeExportModalButton.addEventListener("click", closeExportModal);
+    els.cancelExportButton.addEventListener("click", closeExportModal);
+    els.exportModalBackdrop.addEventListener("click", event => {
+      if (event.target === els.exportModalBackdrop) closeExportModal();
+    });
+    els.confirmExportButton.addEventListener("click", exportWithOptions);
+    els.clearButton.addEventListener("click", clearAll);
+    els.markButton.addEventListener("click", manualMark);
+    els.saveApiKeyButton.addEventListener("click", saveApiKey);
+    els.refreshGlobalSummaryButton.addEventListener("click", updateGlobalSummary);
+
+    els.modelSelect.addEventListener("change", saveUiSettings);
+    els.chunkLimitInput.addEventListener("input", saveUiSettings);
+    document.getElementById("questionMode").addEventListener("change", saveUiSettings);
+    els.chunkRatioInput.addEventListener("change", saveUiSettings);
+    els.globalRatioInput.addEventListener("change", saveUiSettings);
+    els.globalFormatInput.addEventListener("change", saveUiSettings);
+    els.pipSourceSelect.addEventListener("change", () => {
+      saveUiSettings();
+      renderPipContent();
+    });
+    els.openPipButton.addEventListener("click", openPipWindow);
+    els.closePipButton.addEventListener("click", closePipWindow);
+    els.globalIntervalInput.addEventListener("change", () => {
+      saveUiSettings();
+      resetGlobalSummaryTimer();
+    });
+
+    els.languageSelect.addEventListener("change", () => {
+      const labels = {
+        "ko-KR": "한국어",
+        "en-US": "English (US)",
+        "ja-JP": "日本語",
+      };
+
+      const selected = labels[els.languageSelect.value] || els.languageSelect.value;
+
+      saveUiSettings();
+
+      if (state.isRecording) {
+        stopRecognition();
+        setStatus(`${selected}로 변경됨. 다시 시작 버튼을 눌러주세요.`);
+      } else {
+        setStatus(`${selected} 선택됨`);
+      }
+    });
+
+    els.askButton.addEventListener("click", askQuestion);
+
+    document.getElementById("questionInput").addEventListener("keydown", event => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        askQuestion();
+      }
+    });
+
+    window.addEventListener("beforeunload", event => {
+      if (!hasLectureData()) return;
+      saveToLocalStorage();
+      event.preventDefault();
+      event.returnValue = "";
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        saveToLocalStorage();
+      }
+    });
+
+    setInterval(() => {
+      saveToLocalStorage();
+      if (state.isRecording) {
+        setStatus("음성 인식 중", true);
+      }
+    }, 5000);
+
+    resetGlobalSummaryTimer();
+
+    loadUiSettings();
+    updateMobileActivePanel();
+    setupScrollBottomButtons();
+    setupPanelResizer();
+    loadApiKey();
+    refreshSessionSelect();
+    setupSpeechRecognition();
+    const restored = restoreFromLocalStorage();
+    renderTranscript();
+    renderChunkSummaries();
+    renderQaHistory();
+    refreshSessionSelect();
+
+    if (restored) {
+      setStatus("이전 자동 저장 데이터를 복구했습니다.");
+    } else {
+      setStatus("대기 중");
+    }
+  </script>
+</body>
+
+</html>
