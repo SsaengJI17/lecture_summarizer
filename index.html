@@ -3837,7 +3837,13 @@ ${fullTranscript || "전문 없음"}`);
       if (event.target === els.exportModalBackdrop) closeExportModal();
     });
     els.confirmExportButton.addEventListener("click", exportWithOptions);
-    els.clearButton.addEventListener("click", clearAll);
+    els.clearButton.addEventListener("click", () => {
+      const confirmed = confirm(
+        "현재 수업 내용, 요약, 질문 기록이 모두 삭제됩니다.\n\n정말 초기화하시겠습니까?"
+      );
+      if (!confirmed) return;
+      clearAll();
+    });
     els.markButton.addEventListener("click", manualMark);
     els.saveApiKeyButton.addEventListener("click", saveApiKey);
     els.refreshGlobalSummaryButton.addEventListener("click", updateGlobalSummary);
