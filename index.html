@@ -559,6 +559,16 @@
       border-radius: 3px;
       background: #fef08a;
       color: inherit;
+      position: relative;
+      z-index: 2;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    .transcript-block.summarized mark.search-highlight {
+      background: #fde047;
+      color: #111827;
+      outline: 1px solid rgba(180, 83, 9, 0.35);
     }
 
 
@@ -581,6 +591,12 @@
       background: rgba(45, 212, 191, 0.28);
       color: #99f6e4;
       border: 1px solid rgba(45, 212, 191, 0.45);
+    }
+
+    body.theme-dark .transcript-block.summarized mark.search-highlight {
+      background: rgba(34, 211, 238, 0.32);
+      color: #cffafe;
+      border-color: rgba(103, 232, 249, 0.6);
     }
 
     body.theme-dark .search-active {
@@ -1531,6 +1547,8 @@
       isAnsweringQuestion: false,
       currentSessionId: null,
       globalSummaryTimerId: null,
+      searchMatches: [],
+      activeSearchIndex: -1,
     };
 
     const els = {
@@ -2139,6 +2157,7 @@ ${fullText}
       for (const block of state.transcriptBlocks) {
         const wrapper = document.createElement("div");
         wrapper.className = `transcript-block${block.summarized ? " summarized" : ""}`;
+        wrapper.dataset.searchId = block.id;
 
         const time = document.createElement("div");
         time.className = "block-time";
@@ -2163,6 +2182,10 @@ ${fullText}
         els.transcriptPanel.scrollTop = els.transcriptPanel.scrollHeight;
       } else {
         els.transcriptPanel.scrollTop = previousScrollTop;
+      }
+
+      if (document.getElementById("searchInput")?.value.trim()) {
+        applySearchFilter({ preserveActive: true });
       }
 
       updateAllScrollBottomButtons();
@@ -2222,6 +2245,7 @@ ${fullText}
       state.chunkSummaries.forEach((item, index) => {
         const card = document.createElement("div");
         card.className = "summary-card";
+        card.dataset.searchId = item.id;
 
         const title = document.createElement("div");
         title.className = "summary-card-title";
@@ -2255,9 +2279,19 @@ ${fullText}
       });
 
       els.chunkSummaryPanel.scrollTop = els.chunkSummaryPanel.scrollHeight;
-      applySearchFilter();
+      applySearchFilter({ preserveActive: true });
       renderPipContent();
       updateAllScrollBottomButtons();
+    }
+
+
+    function getRecognitionLanguage() {
+      return els.languageSelect.value || "ko-KR";
+    }
+
+    function applyRecognitionLanguage(recognition = state.recognition) {
+      if (!recognition) return;
+      recognition.lang = getRecognitionLanguage();
     }
 
     function setupSpeechRecognition() {
@@ -2268,12 +2302,13 @@ ${fullText}
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = els.languageSelect.value || "ko-KR";
+      recognition.lang = getRecognitionLanguage();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
+        applyRecognitionLanguage(recognition);
         state.isRecording = true;
         els.startButton.disabled = true;
         els.stopButton.disabled = false;
@@ -2321,11 +2356,17 @@ ${fullText}
         els.stopButton.disabled = true;
 
         if (state.autoRestart) {
-          try {
-            recognition.start();
-          } catch (error) {
-            setStatus("자동 재시작 실패");
-          }
+          window.setTimeout(() => {
+            if (!state.autoRestart) return;
+
+            try {
+              state.recognition = setupSpeechRecognition();
+              applyRecognitionLanguage(state.recognition);
+              state.recognition.start();
+            } catch (error) {
+              setStatus("자동 재시작 실패");
+            }
+          }, 250);
           return;
         }
 
@@ -2336,12 +2377,12 @@ ${fullText}
     }
 
     function startRecognition() {
-      if (!state.recognition) {
-        state.recognition = setupSpeechRecognition();
-      }
-      if (!state.recognition || state.isRecording) return;
+      if (state.isRecording) return;
 
-      state.recognition.lang = els.languageSelect.value || "ko-KR";
+      state.recognition = setupSpeechRecognition();
+      if (!state.recognition) return;
+
+      applyRecognitionLanguage(state.recognition);
       state.autoRestart = true;
 
       try {
@@ -2502,8 +2543,11 @@ ${question}
       els.answerBox.innerHTML = "";
 
       state.qaHistory.forEach((item, index) => {
+        if (!item.id) item.id = crypto.randomUUID();
+
         const wrapper = document.createElement("div");
         wrapper.className = "summary-card";
+        wrapper.dataset.searchId = item.id;
 
         const title = document.createElement("div");
         title.className = "summary-card-title";
@@ -2542,7 +2586,7 @@ ${question}
       });
 
       els.answerBox.scrollTop = els.answerBox.scrollHeight;
-      applySearchFilter();
+      applySearchFilter({ preserveActive: true });
       renderPipContent();
       updateAllScrollBottomButtons();
     }
@@ -2567,6 +2611,7 @@ ${question}
 
       const modeLabel = questionMode.options[questionMode.selectedIndex].text;
       const pendingItem = {
+        id: crypto.randomUUID(),
         question,
         answer: "답변 생성 중...",
         mode,
@@ -3157,13 +3202,20 @@ ${fullTranscript || "전문 없음"}`);
         state.globalSummaryTimerId = null;
       }
 
-      const minutes = Number(els.globalIntervalInput.value || 10);
+      const rawMinutes = els.globalIntervalInput.value;
+      const minutes = rawMinutes === "" || rawMinutes == null ? 10 : Number(rawMinutes);
 
-      if (minutes <= 0) {
+      if (!Number.isFinite(minutes) || minutes <= 0) {
         return;
       }
 
       state.globalSummaryTimerId = setInterval(() => {
+        const currentMinutes = Number(els.globalIntervalInput.value || 0);
+        if (!Number.isFinite(currentMinutes) || currentMinutes <= 0) {
+          resetGlobalSummaryTimer();
+          return;
+        }
+
         if (!hasLectureData()) return;
         updateGlobalSummary();
       }, minutes * 60 * 1000);
@@ -3226,6 +3278,11 @@ ${fullTranscript || "전문 없음"}`);
       });
     }
 
+
+    function getSearchSelectorById(id) {
+      return `[data-search-id="${String(id).replaceAll('"', '\\"')}"]`;
+    }
+
     function collectSearchMatches(query) {
       const matches = [];
       if (!query) return matches;
@@ -3235,7 +3292,7 @@ ${fullTranscript || "전문 없음"}`);
         if (text.toLowerCase().includes(query.toLowerCase())) {
           matches.push({
             type: "전문",
-            targetSelector: `#transcriptPanel .transcript-block:nth-of-type(${index + 1})`,
+            targetSelector: getSearchSelectorById(block.id),
             text,
           });
         }
@@ -3246,18 +3303,19 @@ ${fullTranscript || "전문 없음"}`);
         if (text.toLowerCase().includes(query.toLowerCase())) {
           matches.push({
             type: "부분 요약",
-            targetSelector: `#chunkSummaryPanel .summary-card:nth-of-type(${index + 1})`,
+            targetSelector: getSearchSelectorById(item.id),
             text,
           });
         }
       });
 
       state.qaHistory.forEach((item, index) => {
+        if (!item.id) item.id = crypto.randomUUID();
         const text = `질문 ${index + 1} ${item.modeLabel} ${item.question} ${item.answer}`;
         if (text.toLowerCase().includes(query.toLowerCase())) {
           matches.push({
             type: "질문/답변",
-            targetSelector: `#answerBox .summary-card:nth-of-type(${index + 1})`,
+            targetSelector: getSearchSelectorById(item.id || `qa-${index}`),
             text,
           });
         }
@@ -3308,7 +3366,7 @@ ${fullTranscript || "전문 없음"}`);
       });
     }
 
-    function focusSearchResult(index) {
+    function focusSearchResult(index, behavior = "auto") {
       if (!state.searchMatches.length) {
         state.activeSearchIndex = -1;
         clearActiveSearchMarker();
@@ -3326,7 +3384,7 @@ ${fullTranscript || "전문 없음"}`);
       if (target) {
         target.style.display = "";
         target.classList.add("search-active");
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.scrollIntoView({ behavior, block: "center", inline: "nearest" });
       }
 
       const box = document.getElementById("searchResults");
@@ -3345,8 +3403,9 @@ ${fullTranscript || "전문 없음"}`);
       focusSearchResult(state.activeSearchIndex - 1);
     }
 
-    function applySearchFilter() {
+    function applySearchFilter(options = {}) {
       const query = (document.getElementById("searchInput")?.value || "").trim();
+      const previousActiveIndex = Number.isInteger(state.activeSearchIndex) ? state.activeSearchIndex : -1;
 
       [els.transcriptPanel, els.chunkSummaryPanel, els.answerBox].forEach(clearHighlights);
 
@@ -3366,9 +3425,14 @@ ${fullTranscript || "전문 없음"}`);
       });
 
       state.searchMatches = collectSearchMatches(query);
-      state.activeSearchIndex = -1;
       clearActiveSearchMarker();
       renderSearchResults(query, state.searchMatches);
+
+      if (options.preserveActive && previousActiveIndex >= 0 && state.searchMatches.length) {
+        focusSearchResult(Math.min(previousActiveIndex, state.searchMatches.length - 1), "auto");
+      } else {
+        state.activeSearchIndex = -1;
+      }
     }
 
 
@@ -3912,9 +3976,8 @@ ${fullTranscript || "전문 없음"}`);
       }
     }, 5000);
 
-    resetGlobalSummaryTimer();
-
     loadUiSettings();
+    resetGlobalSummaryTimer();
     updateMobileActivePanel();
     setupScrollBottomButtons();
     setupPanelResizer();
