@@ -1549,6 +1549,8 @@
       globalSummaryTimerId: null,
       searchMatches: [],
       activeSearchIndex: -1,
+      activeSearchScrollUntil: 0,
+      activeBottomScrollTargets: {},
     };
 
     const els = {
@@ -2188,6 +2190,7 @@ ${fullText}
         applySearchFilter({ preserveActive: true });
       }
 
+      resumeActiveScrollCorrections();
       updateAllScrollBottomButtons();
     }
 
@@ -3350,7 +3353,7 @@ ${fullTranscript || "전문 없음"}`);
         `;
 
         item.addEventListener("click", () => {
-          focusSearchResult(visibleIndex);
+          focusSearchResult(visibleIndex, "smooth");
         });
 
         box.appendChild(item);
@@ -3364,6 +3367,103 @@ ${fullTranscript || "전문 없음"}`);
       document.querySelectorAll(".search-active").forEach(el => {
         el.classList.remove("search-active");
       });
+    }
+
+
+    function getScrollParentForTarget(target) {
+      if (!target) return null;
+
+      if (target.closest("#transcriptPanel")) return els.transcriptPanel;
+      if (target.closest("#chunkSummaryPanel")) return els.chunkSummaryPanel;
+      if (target.closest("#answerBox")) return els.answerBox;
+      if (target.closest("#globalSummaryPanel")) return els.globalSummaryPanel;
+
+      return null;
+    }
+
+    function centerTargetInsideScroller(target, behavior = "auto") {
+      const scroller = getScrollParentForTarget(target);
+
+      if (!scroller) {
+        target.scrollIntoView({ behavior, block: "center", inline: "nearest" });
+        return;
+      }
+
+      const targetTop = target.offsetTop;
+      const targetMiddle = targetTop + target.offsetHeight / 2;
+      const desiredTop = Math.max(0, targetMiddle - scroller.clientHeight / 2);
+
+      scroller.scrollTo({ top: desiredTop, behavior });
+    }
+
+    function keepFocusedSearchResultInView(duration = 900) {
+      state.activeSearchScrollUntil = Math.max(state.activeSearchScrollUntil || 0, Date.now() + duration);
+      let attempts = 0;
+
+      function tick() {
+        if (Date.now() > state.activeSearchScrollUntil || state.activeSearchIndex < 0) return;
+
+        const match = state.searchMatches[state.activeSearchIndex];
+        const target = match ? document.querySelector(match.targetSelector) : null;
+
+        if (target) {
+          centerTargetInsideScroller(target, "auto");
+        }
+
+        attempts += 1;
+        if (attempts < 24) {
+          requestAnimationFrame(tick);
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function keepElementAtBottom(element, duration = 900) {
+      if (!element || !element.id) return;
+
+      const endAt = Date.now() + duration;
+      state.activeBottomScrollTargets[element.id] = endAt;
+
+      let attempts = 0;
+
+      function tick() {
+        if ((state.activeBottomScrollTargets[element.id] || 0) < Date.now()) return;
+
+        element.scrollTop = element.scrollHeight;
+
+        attempts += 1;
+        if (attempts < 24) {
+          requestAnimationFrame(tick);
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function resumeActiveScrollCorrections() {
+      if (state.activeSearchIndex >= 0 && Date.now() < (state.activeSearchScrollUntil || 0)) {
+        const match = state.searchMatches[state.activeSearchIndex];
+        const target = match ? document.querySelector(match.targetSelector) : null;
+        if (target) centerTargetInsideScroller(target, "auto");
+      }
+
+      Object.entries(state.activeBottomScrollTargets).forEach(([id, endAt]) => {
+        if (Date.now() > endAt) {
+          delete state.activeBottomScrollTargets[id];
+          return;
+        }
+
+        const element = document.getElementById(id);
+        if (element) element.scrollTop = element.scrollHeight;
+      });
+
+      if (state.pipWindow && !state.pipWindow.closed) {
+        const pipContent = state.pipWindow.document.getElementById("pipContent");
+        if (pipContent && Date.now() < (state.activeBottomScrollTargets.pipContent || 0)) {
+          pipContent.scrollTop = pipContent.scrollHeight;
+        }
+      }
     }
 
     function focusSearchResult(index, behavior = "auto") {
@@ -3384,7 +3484,8 @@ ${fullTranscript || "전문 없음"}`);
       if (target) {
         target.style.display = "";
         target.classList.add("search-active");
-        target.scrollIntoView({ behavior, block: "center", inline: "nearest" });
+        centerTargetInsideScroller(target, behavior);
+        keepFocusedSearchResultInView(1100);
       }
 
       const box = document.getElementById("searchResults");
@@ -3534,14 +3635,17 @@ ${fullTranscript || "전문 없음"}`);
 
       const info = getPipSourceInfo();
       const container = state.pipWindow.document.getElementById("pipContent");
-      const title = state.pipWindow.document.getElementById("pipTitle");
+      const pipSelect = state.pipWindow.document.getElementById("pipSourceSelectInPip");
 
-      if (!container || !title) return;
+      if (!container) return;
+
+      if (pipSelect && pipSelect.value !== els.pipSourceSelect.value) {
+        pipSelect.value = els.pipSourceSelect.value;
+      }
 
       const shouldAutoScroll = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
       const previousScrollTop = container.scrollTop;
 
-      title.textContent = info.title;
       container.innerHTML = "";
 
       const clone = info.sourceElement.cloneNode(true);
@@ -3560,6 +3664,8 @@ ${fullTranscript || "전문 없음"}`);
         container.scrollTop = previousScrollTop;
       }
 
+      resumeActiveScrollCorrections();
+      resumeActiveScrollCorrections();
       updateAllScrollBottomButtons();
     }
 
@@ -3594,6 +3700,18 @@ ${fullTranscript || "전문 없음"}`);
               border-bottom: 1px solid #e5e7eb;
               font-weight: 800;
               background: #ffffff;
+            }
+            .pip-source-select {
+              width: 100%;
+              height: 42px;
+              padding: 0 12px;
+              border: 1px solid #d1d5db;
+              border-radius: 12px;
+              background: #ffffff;
+              color: #111827;
+              font: inherit;
+              font-size: 18px;
+              font-weight: 800;
             }
             .pip-content-wrap {
               position: relative;
@@ -3743,7 +3861,14 @@ ${fullTranscript || "전문 없음"}`);
             }
           </style>
           <div class="pip-wrap">
-            <div class="pip-header" id="pipTitle"></div>
+            <div class="pip-header">
+              <select id="pipSourceSelectInPip" class="pip-source-select" aria-label="PiP 표시 내용 선택">
+                <option value="transcript">실시간 전문</option>
+                <option value="chunk">부분 요약</option>
+                <option value="global">전체 요약</option>
+                <option value="qa">질문하기</option>
+              </select>
+            </div>
             <div class="pip-content-wrap">
               <div class="pip-content" id="pipContent"></div>
               <button class="pip-scroll-bottom-button" id="pipScrollBottomButton" title="맨 아래로">↓</button>
@@ -3755,6 +3880,16 @@ ${fullTranscript || "전문 없음"}`);
           state.pipWindow = null;
         });
 
+        const pipSelect = state.pipWindow.document.getElementById("pipSourceSelectInPip");
+        if (pipSelect) {
+          pipSelect.value = els.pipSourceSelect.value;
+          pipSelect.addEventListener("change", () => {
+            els.pipSourceSelect.value = pipSelect.value;
+            saveUiSettings();
+            renderPipContent();
+          });
+        }
+
         renderPipContent();
         const pipContent = state.pipWindow.document.getElementById("pipContent");
         const pipButton = state.pipWindow.document.getElementById("pipScrollBottomButton");
@@ -3762,6 +3897,18 @@ ${fullTranscript || "전문 없음"}`);
           pipContent.addEventListener("scroll", updateAllScrollBottomButtons);
           pipButton.addEventListener("click", () => {
             pipContent.scrollTo({ top: pipContent.scrollHeight, behavior: "smooth" });
+            state.activeBottomScrollTargets.pipContent = Date.now() + 1200;
+
+            let attempts = 0;
+            function keepPipAtBottom() {
+              if (!state.pipWindow || state.pipWindow.closed) return;
+              if (Date.now() > (state.activeBottomScrollTargets.pipContent || 0)) return;
+              const currentPipContent = state.pipWindow.document.getElementById("pipContent");
+              if (currentPipContent) currentPipContent.scrollTop = currentPipContent.scrollHeight;
+              attempts += 1;
+              if (attempts < 24) requestAnimationFrame(keepPipAtBottom);
+            }
+            requestAnimationFrame(keepPipAtBottom);
           });
         }
         updateAllScrollBottomButtons();
@@ -3842,6 +3989,7 @@ ${fullTranscript || "전문 없음"}`);
       const element = document.getElementById(id);
       if (!element) return;
       element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+      keepElementAtBottom(element, 1200);
     }
 
     function setupScrollBottomButtons() {
